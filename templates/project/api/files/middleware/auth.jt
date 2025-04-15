@@ -1,0 +1,65 @@
+// Middleware de Autenticação para {{.projectName}}
+@middleware
+class AuthMiddleware {
+    prop JwtConfig config
+    prop List<string> publicRoutes
+    
+    // Verifica se a rota é pública
+    func IsRotaPublica(string path) -> bool {
+        for rota in publicRoutes {
+            if path.StartsWith(rota) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    // Extrai token do header Authorization
+    func ExtrairToken(Request req) -> string {
+        auth = req.GetHeader("Authorization")
+        if auth == "" || !auth.StartsWith("Bearer ") {
+            return ""
+        }
+        return auth.Replace("Bearer ", "")
+    }
+    
+    // Valida o token JWT
+    func ValidarToken(string token) -> map<string> {
+        if token == "" {
+            return null
+        }
+        
+        try {
+            claims = jwt.Verify(token, config.Secret)
+            return claims
+        } catch (err) {
+            print("Erro ao validar token: " + err)
+            return null
+        }
+    }
+    
+    // Middleware de autenticação
+    func Handle(Request req) -> Response {
+        // Verifica se é rota pública
+        if IsRotaPublica(req.Path) {
+            return req.Next()
+        }
+        
+        // Extrai e valida token
+        token = ExtrairToken(req)
+        claims = ValidarToken(token)
+        
+        if claims == null {
+            return Response.New(401, {
+                "erro": "Token inválido ou expirado"
+            })
+        }
+        
+        // Adiciona claims ao contexto da requisição
+        req.SetContext("usuario", claims)
+        
+        // Continua para próximo middleware/handler
+        return req.Next()
+    }
+} 
+} 

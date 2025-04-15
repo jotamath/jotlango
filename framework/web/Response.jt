@@ -1,0 +1,51 @@
+// Classe de resposta HTTP
+class Response {
+    prop int statusCode
+    prop map<string, string> headers
+    prop any body
+    
+    func New() {
+        statusCode = 200
+        headers = {}
+    }
+    
+    // Define status code
+    func Status(int code) -> Response {
+        statusCode = code
+        return this
+    }
+    
+    // Define header
+    func SetHeader(string name, string value) -> Response {
+        headers[name] = value
+        return this
+    }
+    
+    // Define corpo da resposta
+    func Json(any data) -> Response {
+        headers["Content-Type"] = "application/json"
+        body = data
+        return this
+    }
+    
+    // Define corpo HTML
+    func Html(string html) -> Response {
+        headers["Content-Type"] = "text/html"
+        body = html
+        return this
+    }
+    
+    // Define corpo de texto
+    func Text(string text) -> Response {
+        headers["Content-Type"] = "text/plain"
+        body = text
+        return this
+    }
+    
+    // Redireciona
+    func Redirect(string url) -> Response {
+        statusCode = 302
+        headers["Location"] = url
+        return this
+    }
+} 

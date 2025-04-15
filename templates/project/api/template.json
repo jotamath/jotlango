@@ -1,0 +1,47 @@
+{
+    "name": "api",
+    "description": "RESTful API project template",
+    "variables": [
+        {
+            "name": "projectName",
+            "type": "string",
+            "description": "Name of the project"
+        },
+        {
+            "name": "port",
+            "type": "number",
+            "default": 8080,
+            "description": "Port number for the API"
+        },
+        {
+            "name": "description",
+            "type": "string",
+            "description": "Project description"
+        }
+    ],
+    "files": [
+        {
+            "source": "main.jt",
+            "destination": "src/main.jt"
+        },
+        {
+            "source": "config.jt",
+            "destination": "src/config.jt"
+        },
+        {
+            "source": "README.md",
+            "destination": "README.md"
+        },
+        {
+            "source": "gitignore",
+            "destination": ".gitignore"
+        }
+    ],
+    "config": {
+        "dependencies": [
+            "http",
+            "io",
+            "crypto"
+        ]
+    }
+} 

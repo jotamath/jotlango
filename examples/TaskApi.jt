@@ -1,0 +1,178 @@
+// Task Management API example
+import "http"
+import "io"
+
+class Task {
+    prop string Id
+    prop string Title
+    prop bool IsComplete
+    prop int Priority
+    prop string CreatedAt
+
+    fn markAsComplete() : void {
+        IsComplete = true
+    }
+
+    fn toJson() : map<string, any> {
+        return {
+            "id" = Id,
+            "title" = Title,
+            "isComplete" = IsComplete,
+            "priority" = Priority,
+            "createdAt" = CreatedAt
+        }
+    }
+}
+
+class TaskApi {
+    prop map<string, Task> Tasks
+
+    fn create(req http.Request) : http.Response {
+        task = new Task {
+            Id = generateId(),
+            Title = req.Body["title"],
+            IsComplete = false,
+            Priority = req.Body["priority"],
+            CreatedAt = getCurrentTime()
+        }
+
+        Tasks[task.Id] = task
+
+        resp = new http.Response {
+            Status = 201,
+            Headers = {}
+        }
+        resp.json(task.toJson())
+        return resp
+    }
+
+    fn getAll(req http.Request) : http.Response {
+        taskList = []
+        for id, task in Tasks {
+            taskList.add(task.toJson())
+        }
+
+        resp = new http.Response {
+            Status = 200,
+            Headers = {}
+        }
+        resp.json(taskList)
+        return resp
+    }
+
+    fn getById(req http.Request) : http.Response {
+        id = req.Query["id"]
+        task = Tasks[id]
+
+        if task == null {
+            resp = new http.Response {
+                Status = 404,
+                Headers = {}
+            }
+            resp.json({
+                "error" = "Task not found"
+            })
+            return resp
+        }
+
+        resp = new http.Response {
+            Status = 200,
+            Headers = {}
+        }
+        resp.json(task.toJson())
+        return resp
+    }
+
+    fn update(req http.Request) : http.Response {
+        id = req.Query["id"]
+        task = Tasks[id]
+
+        if task == null {
+            resp = new http.Response {
+                Status = 404,
+                Headers = {}
+            }
+            resp.json({
+                "error" = "Task not found"
+            })
+            return resp
+        }
+
+        if req.Body["title"] != null {
+            task.Title = req.Body["title"]
+        }
+        if req.Body["priority"] != null {
+            task.Priority = req.Body["priority"]
+        }
+        if req.Body["isComplete"] != null {
+            task.IsComplete = req.Body["isComplete"]
+        }
+
+        resp = new http.Response {
+            Status = 200,
+            Headers = {}
+        }
+        resp.json(task.toJson())
+        return resp
+    }
+
+    fn delete(req http.Request) : http.Response {
+        id = req.Query["id"]
+        task = Tasks[id]
+
+        if task == null {
+            resp = new http.Response {
+                Status = 404,
+                Headers = {}
+            }
+            resp.json({
+                "error" = "Task not found"
+            })
+            return resp
+        }
+
+        Tasks.remove(id)
+
+        resp = new http.Response {
+            Status = 204,
+            Headers = {}
+        }
+        return resp
+    }
+
+    fn generateId() : string {
+        return "task_" + Tasks.length() + 1
+    }
+
+    fn getCurrentTime() : string {
+        return __native_current_time()
+    }
+}
+
+// Create server instance
+server = new http.Server {
+    Port = 8080,
+    Routes = {}
+}
+
+// Create API instance
+api = new TaskApi {
+    Tasks = {}
+}
+
+// Configure routes
+server.get("/tasks", api.getAll)
+server.get("/tasks/:id", api.getById)
+server.post("/tasks", api.create)
+server.put("/tasks/:id", api.update)
+server.delete("/tasks/:id", api.delete)
+
+// Start server
+io.println("Task Management API started on port 8080...")
+io.println("Available endpoints:")
+io.println("- GET    /tasks")
+io.println("- GET    /tasks/:id")
+io.println("- POST   /tasks")
+io.println("- PUT    /tasks/:id")
+io.println("- DELETE /tasks/:id")
+call server.listen() 

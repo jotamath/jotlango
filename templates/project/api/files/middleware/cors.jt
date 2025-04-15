@@ -1,0 +1,54 @@
+// Middleware CORS para {{.projectName}}
+@middleware
+class CorsMiddleware {
+    prop Config config
+    
+    // Configura os headers CORS
+    func ConfigurarCors(Response res) {
+        // Define origem permitida
+        if config.AllowOrigin != "" {
+            res.SetHeader("Access-Control-Allow-Origin", config.AllowOrigin)
+        } else {
+            res.SetHeader("Access-Control-Allow-Origin", "*")
+        }
+        
+        // Define métodos permitidos
+        if config.AllowMethods != "" {
+            res.SetHeader("Access-Control-Allow-Methods", config.AllowMethods)
+        } else {
+            res.SetHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        }
+        
+        // Define headers permitidos
+        if config.AllowHeaders != "" {
+            res.SetHeader("Access-Control-Allow-Headers", config.AllowHeaders)
+        } else {
+            res.SetHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        }
+        
+        // Define max age
+        if config.MaxAge != "" {
+            res.SetHeader("Access-Control-Max-Age", config.MaxAge)
+        }
+        
+        // Define se permite credenciais
+        if config.AllowCredentials {
+            res.SetHeader("Access-Control-Allow-Credentials", "true")
+        }
+    }
+    
+    // Middleware CORS
+    func Handle(Request req) -> Response {
+        // Se for requisição OPTIONS, retorna 200
+        if req.Method == "OPTIONS" {
+            res = Response.New(200)
+            ConfigurarCors(res)
+            return res
+        }
+        
+        // Para outros métodos, configura CORS e continua
+        res = req.Next()
+        ConfigurarCors(res)
+        return res
+    }
+} 

@@ -1,0 +1,47 @@
+// Aplicação web de exemplo
+class App {
+    func Main() {
+        // Cria servidor
+        server = Server.New()
+        
+        // Configura middlewares
+        server.Use(LoggerMiddleware.New())
+        server.Use(CorsMiddleware.New())
+        
+        // Rota de API
+        server.Get("/api/hello", func(req Request) -> Response {
+            return Response.Json({
+                "message": "Olá do JotLang!"
+            })
+        })
+        
+        // Rota para dados do usuário
+        server.Get("/api/user", func(req Request) -> Response {
+            return Response.Json({
+                "id": 1,
+                "name": "Usuário Teste",
+                "email": "teste@exemplo.com"
+            })
+        })
+        
+        // Rota para página React
+        server.Get("/", func(req Request) -> Response {
+            // Renderiza página React
+            return Response.Html(`
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <title>JotLang + React</title>
+                        <script src="/static/app.js"></script>
+                    </head>
+                    <body>
+                        <div id="root"></div>
+                    </body>
+                </html>
+            `)
+        })
+        
+        // Inicia servidor
+        server.Listen(3000)
+    }
+} 

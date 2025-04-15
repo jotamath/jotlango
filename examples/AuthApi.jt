@@ -1,0 +1,116 @@
+// Authentication API example
+import "http"
+import "io"
+import "crypto"
+
+class User {
+    prop string Id
+    prop string Email
+    prop string PasswordHash
+    prop list<string> Roles
+    prop int Points
+    prop string CreatedAt
+
+    func AddRole(string role) {
+        Roles.Add(role)
+        Points = Points + 10
+        print("Role '{role}' added. User now has {Points} points.")
+    }
+
+    func ToJson() -> map<string, any> {
+        return {
+            "id": Id,
+            "email": Email,
+            "roles": Roles,
+            "points": Points,
+            "createdAt": CreatedAt
+        }
+    }
+}
+
+class AuthApi {
+    prop map<string, User> Users
+
+    func Register(Request req) -> Response {
+        email = req.Body["email"]
+        password = req.Body["password"]
+
+        // Check if user exists
+        for _, user in Users {
+            if user.Email == email {
+                return Response.Status(400).Json({
+                    "error": "Email already registered"
+                })
+            }
+        }
+
+        // Create new user
+        user = User.New()
+        user.Email = email
+        user.PasswordHash = password // TODO: Implement proper hashing
+        user.Roles = []
+        user.Points = 0
+        user.CreatedAt = DateTime.Now()
+
+        Users[email] = user
+
+        return Response.Json({
+            "message": "User registered successfully",
+            "user": user.ToJson()
+        })
+    }
+
+    func Login(Request req) -> Response {
+        email = req.Body["email"]
+        password = req.Body["password"]
+
+        user = Users[email]
+        if user == null {
+            return Response.Status(401).Json({
+                "error": "Invalid credentials"
+            })
+        }
+
+        // TODO: Implement proper password verification
+        if user.PasswordHash != password {
+            return Response.Status(401).Json({
+                "error": "Invalid credentials"
+            })
+        }
+
+        return Response.Json({
+            "message": "Login successful",
+            "user": user.ToJson()
+        })
+    }
+
+    fn generateId() : string {
+        return "user_" + Users.length() + 1
+    }
+
+    fn getCurrentTime() : string {
+        return __native_current_time()
+    }
+}
+
+// Create server instance
+server = new http.Server {
+    Port = 8080,
+    Routes = {}
+}
+
+// Create API instance
+api = new AuthApi {
+    Users = {}
+}
+
+// Configure routes
+server.post("/auth/register", api.register)
+server.post("/auth/login", api.login)
+
+// Start server
+io.println("Auth API started on port 8080...")
+io.println("Available endpoints:")
+io.println("- POST /auth/register")
+io.println("- POST /auth/login")
+call server.listen()

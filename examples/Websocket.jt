@@ -1,0 +1,127 @@
+// =============================
+// WebSocket.jt
+// =============================
+import "http"
+import "io"
+import "websocket"
+
+class Mensagem {
+    prop string Id
+    prop string Texto
+    prop string Usuario
+    prop string DataEnvio
+}
+
+@dto MensagemDTO {
+    prop id: guid
+    prop texto: string
+    prop usuario: string
+    prop dataEnvio: datetime
+}
+
+class ChatRoom {
+    prop map<string, Connection> Clients
+    prop list<string> MessageHistory
+
+    func Broadcast(string message) {
+        MessageHistory.Add(message)
+        for id, client in Clients {
+            client.Send(message)
+        }
+    }
+
+    func AddClient(Connection conn) {
+        Clients[conn.Id] = conn
+        Broadcast("User {conn.Id} joined the chat")
+    }
+
+    func RemoveClient(Connection conn) {
+        Clients.Remove(conn.Id)
+        Broadcast("User {conn.Id} left the chat")
+    }
+
+    func HandleMessage(Connection conn, string message) {
+        Broadcast("User {conn.Id}: {message}")
+    }
+}
+
+// Create chat room
+chatRoom = ChatRoom.New()
+chatRoom.Clients = {}
+chatRoom.MessageHistory = []
+
+// Create WebSocket server
+wsServer = new websocket.Server {
+    Port = 8080,
+    Path = "/chat",
+
+    fn onConnect(conn websocket.Connection) : void {
+        chatRoom.AddClient(conn)
+        
+        // Send message history
+        for message in chatRoom.MessageHistory {
+            conn.send(message)
+        }
+    },
+
+    fn onMessage(conn websocket.Connection, message string) : void {
+        chatRoom.HandleMessage(conn, message)
+    },
+
+    fn onDisconnect(conn websocket.Connection) : void {
+        chatRoom.RemoveClient(conn)
+    }
+}
+
+// Start server
+io.println("WebSocket Chat Server started on ws://localhost:8080/chat")
+call wsServer.listen()
+
+@websocket("/chat")
+class ChatHub {
+    fn OnConnect(usuario: string) {
+        print("Conectado: {usuario}")
+        BroadcastMessage("Sistema", "{usuario} entrou no chat")
+    }
+
+    fn OnDisconnect(usuario: string) {
+        print("Desconectado: {usuario}")
+        BroadcastMessage("Sistema", "{usuario} saiu do chat")
+    }
+
+    fn OnMessage(usuario: string, mensagem: string) {
+        var novaMensagem = new Mensagem {
+            texto = mensagem,
+            usuario = usuario,
+            dataEnvio = now()
+        }
+        db.Mensagens.Add(novaMensagem)
+        db.SaveChanges()
+        BroadcastMessage(usuario, mensagem)
+    }
+
+    fn BroadcastMessage(usuario: string, mensagem: string) {
+        Clients.All.Send("ReceiveMessage", {
+            usuario = usuario,
+            mensagem = mensagem,
+            dataEnvio = now()
+        })
+    }
+
+    @httpget("/api/mensagens")
+    fn GetMensagens() : list<MensagemDTO> {
+        return db.Mensagens.Take(50).OrderBy("dataEnvio DESC")
+    }
+}
+
+// Example usage
+func Main() {
+    print("Chat server started")
+    
+    // TODO: Implement WebSocket server
+    // server = WebSocketServer.New()
+    // server.OnConnect(chatRoom.AddClient)
+    // server.OnDisconnect(chatRoom.RemoveClient)
+    // server.OnMessage(chatRoom.HandleMessage)
+    // server.Listen(8080)
+}

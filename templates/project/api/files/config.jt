@@ -1,0 +1,35 @@
+// Configuration file for {{.projectName}}
+@config
+class Config {
+    // Server settings
+    prop int Port = {{.port}}
+    prop string Environment = "development"
+    
+    // Security settings
+    prop string JwtSecret = env("JWT_SECRET", "your-secret-key")
+    prop int JwtExpiration = 3600  // 1 hour
+    
+    // Database settings
+    prop string DbHost = env("DB_HOST", "localhost")
+    prop int DbPort = env("DB_PORT", 5432)
+    prop string DbName = env("DB_NAME", "{{.projectName}}")
+    prop string DbUser = env("DB_USER", "postgres")
+    prop string DbPassword = env("DB_PASSWORD", "postgres")
+    
+    // Logging settings
+    prop string LogLevel = env("LOG_LEVEL", "info")
+    prop string LogFile = env("LOG_FILE", "logs/app.log")
+    
+    // CORS settings
+    prop list<string> AllowedOrigins = [
+        "http://localhost:3000",
+        "http://localhost:8080"
+    ]
+    prop list<string> AllowedMethods = [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+    ]
+} 

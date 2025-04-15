@@ -1,0 +1,106 @@
+// Middleware de Validação para {{.projectName}}
+@middleware
+class ValidatorMiddleware {
+    prop map<string, List<string>> schemas
+    
+    // Adiciona um schema de validação
+    func AdicionarSchema(string rota, List<string> regras) {
+        schemas[rota] = regras
+    }
+    
+    // Valida um campo específico
+    func ValidarCampo(string valor, string regra) -> map<string> {
+        tipo = regra.Split(":")[0]
+        param = regra.Split(":")[1] ?? ""
+        
+        switch tipo {
+            case "required":
+                if valor == "" {
+                    return {
+                        "valido": false,
+                        "erro": "Campo obrigatório"
+                    }
+                }
+            case "min":
+                if valor.Length < int.Parse(param) {
+                    return {
+                        "valido": false,
+                        "erro": "Tamanho mínimo: " + param
+                    }
+                }
+            case "max":
+                if valor.Length > int.Parse(param) {
+                    return {
+                        "valido": false,
+                        "erro": "Tamanho máximo: " + param
+                    }
+                }
+            case "email":
+                if !valor.Contains("@") {
+                    return {
+                        "valido": false,
+                        "erro": "Email inválido"
+                    }
+                }
+            case "number":
+                if !int.TryParse(valor) {
+                    return {
+                        "valido": false,
+                        "erro": "Deve ser um número"
+                    }
+                }
+        }
+        
+        return {
+            "valido": true,
+            "erro": ""
+        }
+    }
+    
+    // Valida todos os campos da requisição
+    func ValidarRequest(Request req) -> map<string> {
+        regras = schemas[req.Path]
+        if regras == null {
+            return {
+                "valido": true,
+                "erros": {}
+            }
+        }
+        
+        erros = {}
+        
+        for regra in regras {
+            campo = regra.Split("|")[0]
+            validacoes = regra.Split("|")[1].Split(",")
+            
+            valor = req.Body[campo] ?? ""
+            
+            for validacao in validacoes {
+                resultado = ValidarCampo(valor, validacao)
+                if !resultado["valido"] {
+                    erros[campo] = resultado["erro"]
+                    break
+                }
+            }
+        }
+        
+        return {
+            "valido": erros.Count == 0,
+            "erros": erros
+        }
+    }
+    
+    // Middleware de validação
+    func Handle(Request req) -> Response {
+        resultado = ValidarRequest(req)
+        
+        if !resultado["valido"] {
+            return Response.New(400, {
+                "erro": "Dados inválidos",
+                "detalhes": resultado["erros"]
+            })
+        }
+        
+        return req.Next()
+    }
+} 

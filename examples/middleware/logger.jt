@@ -1,0 +1,84 @@
+// Middleware de Logging
+@middleware
+class LoggerMiddleware {
+    prop string logFile
+    prop bool consoleOutput
+    prop int logLevel // 0=DEBUG, 1=INFO, 2=WARN, 3=ERROR
+    
+    // Construtor com configurações padrão
+    func New() {
+        logFile = "api.log"
+        consoleOutput = true
+        logLevel = 1
+    }
+    
+    // Formata a mensagem de log
+    func FormatarLog(string nivel, string mensagem) -> string {
+        timestamp = DateTime.Now().ToString("yyyy-MM-dd HH:mm:ss")
+        return "[" + timestamp + "] [" + nivel + "] " + mensagem
+    }
+    
+    // Escreve no arquivo de log
+    func EscreverLog(string nivel, string mensagem) {
+        nivelNumerico = 0
+        switch nivel {
+            case "DEBUG": nivelNumerico = 0
+            case "INFO": nivelNumerico = 1
+            case "WARN": nivelNumerico = 2
+            case "ERROR": nivelNumerico = 3
+        }
+        
+        if nivelNumerico >= logLevel {
+            logFormatado = FormatarLog(nivel, mensagem)
+            
+            if consoleOutput {
+                print(logFormatado)
+            }
+            
+            File.AppendAllText(logFile, logFormatado + "\n")
+        }
+    }
+    
+    // Logs por nível
+    func Debug(string mensagem) {
+        EscreverLog("DEBUG", mensagem)
+    }
+    
+    func Info(string mensagem) {
+        EscreverLog("INFO", mensagem)
+    }
+    
+    func Warn(string mensagem) {
+        EscreverLog("WARN", mensagem)
+    }
+    
+    func Error(string mensagem) {
+        EscreverLog("ERROR", mensagem)
+    }
+    
+    // Middleware de logging
+    func Handle(Request req) -> Response {
+        inicio = DateTime.Now()
+        
+        Info("Request iniciada: " + req.Method + " " + req.Path)
+        Debug("Headers: " + req.Headers.ToString())
+        
+        if req.Body != null {
+            Debug("Body: " + req.Body.ToString())
+        }
+        
+        resp = req.Next()
+        
+        duracao = DateTime.Now().Subtract(inicio).TotalMilliseconds
+        
+        if resp.StatusCode >= 400 {
+            Error("Request falhou: " + req.Method + " " + req.Path + 
+                  " [" + resp.StatusCode + "] em " + duracao + "ms")
+        } else {
+            Info("Request completada: " + req.Method + " " + req.Path + 
+                 " [" + resp.StatusCode + "] em " + duracao + "ms")
+        }
+        
+        return resp
+    }
+} 

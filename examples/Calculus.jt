@@ -1,0 +1,31 @@
+// =============================
+// Calculos.jt
+// =============================
+module Calculos
+
+fn CalcularIMC(peso: float, altura: float) : float {
+    return peso / (altura * altura)
+}
+
+fn AreaDoCirculo(raio: float) : float {
+    return 3.14 * raio * raio
+}
+
+fn SomaLista(numeros: list<int>) : int {
+    var soma = 0
+    foreach n in numeros {
+        soma += n
+    }
+    return soma
+}
+
+fn Main() : void {
+    var imc = CalcularIMC(70, 1.75)
+    print("IMC: {imc}")
+
+    var area = AreaDoCirculo(5)
+    print("Área do círculo: {area}")
+
+    var total = SomaLista([1, 2, 3, 4, 5])
+    print("Soma: {total}")
+}

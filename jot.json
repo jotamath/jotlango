@@ -1,0 +1,13 @@
+{
+    "name": "jotlango",
+    "version": "0.1.0",
+    "description": "Biblioteca padrão da JotLang",
+    "main": "test.jt",
+    "dependencies": {
+        "types": "./stdlib/types",
+        "io": "./stdlib/io",
+        "http": "./stdlib/http",
+        "websocket": "./stdlib/websocket",
+        "database": "./stdlib/database"
+    }
+} 

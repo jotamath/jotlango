@@ -1,0 +1,41 @@
+title: JotLang
+description: Uma linguagem de programação moderna e expressiva
+theme: just-the-docs
+
+# URL base do site
+url: https://jotamath.github.io/jotlango
+
+# Configurações de navegação
+nav_external_links:
+  - title: GitHub
+    url: https://github.com/jotamath/jotlango
+
+# Configurações de cores
+color_scheme: dark
+
+# Configurações de busca
+search_enabled: true
+search_placeholder: "Buscar na documentação..."
+
+# Configurações de links auxiliares
+aux_links:
+  "Repositório no GitHub":
+    - "//github.com/jotamath/jotlango"
+
+# Configurações de footer
+footer_content: "Copyright © 2024 JotLang. Todos os direitos reservados."
+
+# Configurações de plugins
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Configurações de build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/

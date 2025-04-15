@@ -1,0 +1,57 @@
+// =============================
+// Validation.jt
+// =============================
+@dto EnderecoDTO {
+    prop cep: string
+    prop rua: string
+    prop numero: string
+    prop complemento: string
+    prop bairro: string
+    prop cidade: string
+    prop estado: string
+}
+
+@dto ClienteDTO {
+    prop id: guid
+    prop nome: string
+    prop email: string
+    prop cpf: string
+    prop telefone: string
+    prop dataNascimento: datetime
+    prop endereco: EnderecoDTO
+}
+
+@validator CpfValidator {
+    fn Validate(cpf: string) : bool {
+        return true // Lógica simplificada para exemplo
+    }
+}
+
+@validator IdadeValidator {
+    fn Validate(dataNascimento: datetime) : bool {
+        return (now().year - dataNascimento.year) >= 18
+    }
+}
+
+@httppost("/api/clientes")
+fn CreateCliente(cliente: ClienteDTO) : ClienteDTO {
+    if (!cliente.IsValid()) {
+        throw("Dados inválidos")
+    }
+
+    var cpfValidator = new CpfValidator()
+    if (!cpfValidator.Validate(cliente.cpf)) {
+        throw("CPF inválido")
+    }
+
+    var idadeValidator = new IdadeValidator()
+    if (!idadeValidator.Validate(cliente.dataNascimento)) {
+        throw("Deve ser maior de idade")
+    }
+
+    db.Clientes.Add(cliente)
+    db.SaveChanges()
+
+    return cliente
+}
+

@@ -1,0 +1,28 @@
+// {{.projectName}} - Main API file
+import "http"
+import "io"
+
+// Server configuration
+server = new http.Server {
+    Port = {{.port}},
+    Routes = {}
+}
+
+// Health check endpoint
+server.get("/health", fn(req http.Request) : http.Response {
+    resp = new http.Response {
+        Status = 200,
+        Headers = {}
+    }
+    resp.json({
+        "status" = "healthy",
+        "timestamp" = __native_current_time()
+    })
+    return resp
+})
+
+// Start server
+io.println("{{.projectName}} API started on port {{.port}}...")
+io.println("Available endpoints:")
+io.println("- GET /health")
+call server.listen() 

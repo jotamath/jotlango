@@ -1,0 +1,60 @@
+// =============================
+// MiddlewareApp.jt
+// =============================
+module MiddlewareApi
+
+class ErrorResponse {
+    prop Message: string
+    prop StackTrace: string
+    prop Timestamp: datetime
+}
+
+class RequestLoggingMiddleware {
+    prop Next: any
+    prop Logger: any
+
+    fn InvokeAsync(context: any) : void {
+        var start = now()
+        Logger.Info("Início: {context.Method} {context.Path}")
+        try {
+            Next(context)
+        } finally {
+            var duration = now() - start
+            Logger.Info("Fim: {context.Method} {context.Path} - {duration}")
+        }
+    }
+}
+
+class GlobalExceptionMiddleware {
+    prop Next: any
+    prop Logger: any
+
+    fn InvokeAsync(context: any) {
+        try {
+            Next(context)
+        } catch ex {
+            Logger.Error(ex)
+            return {
+                Message = ex.Message,
+                StackTrace = ex.StackTrace,
+                Timestamp = now()
+            }
+        }
+    }
+}
+
+@api
+@route("/api/test")
+class TestController {
+    prop Logger: any
+
+    fn TriggerError() {
+        throw("Erro de teste")
+    }
+
+    fn TestPerformance() {
+        sleep(100)
+        return "Operação concluída"
+    }
+}
+

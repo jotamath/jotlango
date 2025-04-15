@@ -1,0 +1,16 @@
+// =============================
+// HelloWorld.jt
+// =============================
+
+class App {
+    func Main() {
+        print("Hello, World!")
+        
+        // Using string interpolation
+        name = "JotLang"
+        print("Welcome to {name}!")
+    }
+}
+
+call Main
+

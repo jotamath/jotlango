@@ -1,0 +1,33 @@
+// Classe de rota
+class Route {
+    prop string method
+    prop string path
+    prop Handler handler
+    prop list<Middleware> middlewares
+    
+    func New(string method, string path, Handler handler) {
+        this.method = method
+        this.path = path
+        this.handler = handler
+        middlewares = []
+    }
+    
+    // Adiciona middleware específico para esta rota
+    func Use(Middleware middleware) {
+        middlewares.Add(middleware)
+    }
+    
+    // Executa a rota
+    func Handle(Request req) -> Response {
+        // Executa middlewares da rota
+        for middleware in middlewares {
+            resp = middleware.Handle(req)
+            if resp != null {
+                return resp
+            }
+        }
+        
+        // Executa o handler
+        return handler(req)
+    }
+} 

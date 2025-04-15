@@ -1,0 +1,93 @@
+// Advanced mathematical operations example
+import "math"
+import "io"
+
+class MathOperations {
+    fn basicOperations() : void {
+        // Addition
+        sum = 10 + 20
+        io.println("Sum: {sum}")
+
+        // Subtraction
+        diff = 30 - 15
+        io.println("Difference: {diff}")
+
+        // Multiplication
+        product = 6 * 8
+        io.println("Product: {product}")
+
+        // Division
+        quotient = 100 / 5
+        io.println("Quotient: {quotient}")
+    }
+
+    fn trigonometry() : void {
+        // Using PI constant
+        angle = math.PI / 4  // 45 degrees
+
+        // Trigonometric functions
+        sinValue = math.sin(angle)
+        cosValue = math.cos(angle)
+        tanValue = math.tan(angle)
+
+        io.println("For angle {angle} radians:")
+        io.println("sin: {sinValue}")
+        io.println("cos: {cosValue}")
+        io.println("tan: {tanValue}")
+    }
+
+    fn powerAndRoot() : void {
+        // Square root
+        number = 16
+        root = math.sqrt(number)
+        io.println("Square root of {number}: {root}")
+
+        // Power
+        base = 2
+        exponent = 8
+        result = math.pow(base, exponent)
+        io.println("{base} raised to {exponent}: {result}")
+    }
+
+    fn statistics() : void {
+        numbers = [12, 45, 23, 67, 89, 34, 21]
+        
+        // Find maximum
+        max = numbers[0]
+        for num in numbers {
+            max = math.max(max, num)
+        }
+        io.println("Maximum: {max}")
+
+        // Find minimum
+        min = numbers[0]
+        for num in numbers {
+            min = math.min(min, num)
+        }
+        io.println("Minimum: {min}")
+
+        // Calculate average
+        sum = 0
+        for num in numbers {
+            sum = sum + num
+        }
+        average = sum / numbers.length()
+        io.println("Average: {average}")
+    }
+}
+
+// Create instance
+calculator = new MathOperations {}
+
+// Run demonstrations
+io.println("=== Basic Operations ===")
+call calculator.basicOperations()
+
+io.println("\n=== Trigonometry ===")
+call calculator.trigonometry()
+
+io.println("\n=== Power and Root ===")
+call calculator.powerAndRoot()
+
+io.println("\n=== Statistics ===")
+call calculator.statistics() 

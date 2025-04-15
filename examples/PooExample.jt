@@ -1,0 +1,25 @@
+// =============================
+// PooExample.jt
+// =============================
+module PooExample
+
+class Pessoa {
+    prop nome: string
+    prop idade: int
+
+    fn Saudar() : string {
+        return "Olá, meu nome é {nome} e tenho {idade} anos!"
+    }
+}
+
+@crud
+class Usuario {
+    prop id: int
+    prop email: string
+    prop senha: string
+}
+
+@httpget("/api/hello")
+fn SayHello() : string {
+    return "Bem-vindo ao Jot!"
+}

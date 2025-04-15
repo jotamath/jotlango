@@ -1,0 +1,48 @@
+// Configurações do framework web
+class Config {
+    prop string environment
+    prop string staticDir
+    prop string apiPrefix
+    prop bool enableCors
+    prop list<string> allowedOrigins
+    prop map<string, string> database
+    prop map<string, string> auth
+    
+    func New() {
+        environment = "development"
+        staticDir = "public"
+        apiPrefix = "/api"
+        enableCors = true
+        allowedOrigins = ["http://localhost:3000"]
+        database = {
+            "host": "localhost",
+            "port": "5432",
+            "name": "jotapp",
+            "user": "postgres",
+            "password": "postgres"
+        }
+        auth = {
+            "jwtSecret": "your-secret-key",
+            "jwtExpiration": "24h"
+        }
+    }
+    
+    // Carrega configurações do ambiente
+    func LoadFromEnv() {
+        environment = env("JOT_ENV", "development")
+        staticDir = env("JOT_STATIC_DIR", "public")
+        apiPrefix = env("JOT_API_PREFIX", "/api")
+        enableCors = env("JOT_ENABLE_CORS", "true") == "true"
+        
+        // Configurações do banco de dados
+        database["host"] = env("DB_HOST", "localhost")
+        database["port"] = env("DB_PORT", "5432")
+        database["name"] = env("DB_NAME", "jotapp")
+        database["user"] = env("DB_USER", "postgres")
+        database["password"] = env("DB_PASSWORD", "postgres")
+        
+        // Configurações de autenticação
+        auth["jwtSecret"] = env("JWT_SECRET", "your-secret-key")
+        auth["jwtExpiration"] = env("JWT_EXPIRATION", "24h")
+    }
+} 

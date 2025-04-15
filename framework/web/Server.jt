@@ -1,0 +1,48 @@
+// Servidor web principal
+class Server {
+    prop int port
+    prop list<Middleware> middlewares
+    prop map<string, Route> routes
+    prop Config config
+    
+    func New() {
+        port = 3000
+        middlewares = []
+        routes = {}
+        config = Config.New()
+    }
+    
+    // Adiciona middleware
+    func Use(Middleware middleware) {
+        middlewares.Add(middleware)
+    }
+    
+    // Define rota
+    func Route(string method, string path, Handler handler) {
+        routes[method + ":" + path] = Route.New(method, path, handler)
+    }
+    
+    // Métodos HTTP
+    func Get(string path, Handler handler) {
+        Route("GET", path, handler)
+    }
+    
+    func Post(string path, Handler handler) {
+        Route("POST", path, handler)
+    }
+    
+    func Put(string path, Handler handler) {
+        Route("PUT", path, handler)
+    }
+    
+    func Delete(string path, Handler handler) {
+        Route("DELETE", path, handler)
+    }
+    
+    // Inicia o servidor
+    func Listen(int port) {
+        this.port = port
+        print("Servidor iniciado na porta " + port)
+        // Implementação do servidor HTTP
+    }
+} 

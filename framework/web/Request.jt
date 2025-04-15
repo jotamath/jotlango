@@ -1,0 +1,42 @@
+// Classe de requisição HTTP
+class Request {
+    prop string method
+    prop string path
+    prop map<string, string> headers
+    prop map<string, string> query
+    prop map<string, string> params
+    prop any body
+    prop map<string, any> context
+    
+    func New() {
+        headers = {}
+        query = {}
+        params = {}
+        context = {}
+    }
+    
+    // Obtém header
+    func GetHeader(string name) -> string {
+        return headers[name] ?? ""
+    }
+    
+    // Obtém parâmetro de query
+    func GetQuery(string name) -> string {
+        return query[name] ?? ""
+    }
+    
+    // Obtém parâmetro de rota
+    func GetParam(string name) -> string {
+        return params[name] ?? ""
+    }
+    
+    // Define contexto
+    func SetContext(string key, any value) {
+        context[key] = value
+    }
+    
+    // Obtém contexto
+    func GetContext(string key) -> any {
+        return context[key]
+    }
+} 

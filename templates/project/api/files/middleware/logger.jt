@@ -1,0 +1,51 @@
+// Middleware de logging para {{.projectName}}
+@middleware
+class LoggerMiddleware {
+    prop Config config
+    
+    // Registra informações da requisição
+    func LogRequest(Request req) {
+        print("[" + time.Now() + "] " + req.Method + " " + req.Path)
+        
+        if config.LogLevel == "debug" {
+            print("Headers: " + req.Headers)
+            print("Query: " + req.Query)
+            print("Body: " + req.Body)
+        }
+    }
+    
+    // Registra informações da resposta
+    func LogResponse(Response res) {
+        print("[" + time.Now() + "] Status: " + res.Status)
+        
+        if config.LogLevel == "debug" {
+            print("Response Body: " + res.Body)
+        }
+    }
+    
+    // Middleware de logging
+    func Log(Request req) -> Response {
+        LogRequest(req)
+        
+        res = req.Next()
+        
+        LogResponse(res)
+        return res
+    }
+    
+    // Registra erro
+    func LogError(string mensagem, map<string> detalhes) {
+        erro = {
+            "timestamp": time.Now(),
+            "mensagem": mensagem,
+            "detalhes": detalhes
+        }
+        
+        print("[ERRO] " + erro)
+        
+        if config.LogFile != "" {
+            // Salva o erro no arquivo de log
+            file.Append(config.LogFile, erro + "\n")
+        }
+    }
+} 

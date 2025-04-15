@@ -1,0 +1,59 @@
+// Importar módulos necessários
+import "http"
+import "io"
+import "math"
+
+// API de calculadora
+class CalculadoraApi {
+    fn somar(req http.Request) : http.Response {
+        a = req.Query["a"]
+        b = req.Query["b"]
+        
+        resultado = math.parse(a) + math.parse(b)
+        
+        resp = new http.Response {
+            Status = 200,
+            Headers = {}
+        }
+        
+        resp.json({
+            "resultado" = resultado
+        })
+        
+        return resp
+    }
+    
+    fn raizQuadrada(req http.Request) : http.Response {
+        numero = req.Query["numero"]
+        
+        resultado = math.sqrt(math.parse(numero))
+        
+        resp = new http.Response {
+            Status = 200,
+            Headers = {}
+        }
+        
+        resp.json({
+            "resultado" = resultado
+        })
+        
+        return resp
+    }
+}
+
+// Criar servidor
+servidor = new http.Server {
+    Port = 8080,
+    Routes = {}
+}
+
+// Criar API
+api = new CalculadoraApi {}
+
+// Configurar rotas
+servidor.get("/somar", api.somar)
+servidor.get("/raiz", api.raizQuadrada)
+
+// Iniciar servidor
+io.println("Servidor iniciado na porta 8080...")
+call servidor.listen() 
