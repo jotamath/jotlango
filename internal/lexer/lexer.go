@@ -31,6 +31,7 @@ const (
 	TokenGT       = ">"
 	TokenEQ       = "=="
 	TokenNotEQ    = "!="
+	TokenColon    = ":"
 
 	// Delimitadores
 	TokenComma     = ","
@@ -108,6 +109,8 @@ func (l *Lexer) NextToken() Token {
 		} else {
 			tok = newToken(TokenAssign, l.ch)
 		}
+	case ':':
+		tok = newToken(TokenColon, l.ch)
 	case '+':
 		tok = newToken(TokenPlus, l.ch)
 	case '-':

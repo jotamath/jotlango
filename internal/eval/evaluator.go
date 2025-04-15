@@ -503,9 +503,3 @@ var (
 	TRUE  = &Boolean{Value: true}
 	FALSE = &Boolean{Value: false}
 )
-
-func (cs *parser.ClassStatement) statementNode()      {}
-func (fs *parser.FunctionStatement) statementNode()   {}
-func (vs *parser.VariableStatement) statementNode()   {}
-func (rs *parser.ReturnStatement) statementNode()     {}
-func (es *parser.ExpressionStatement) statementNode() {}

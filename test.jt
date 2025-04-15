@@ -1,60 +1,60 @@
 // Teste completo das funcionalidades do JotLang
 class Test {
     // Propriedades da classe
-    prop string Nome
-    prop int Idade
-    prop float Salario
+    prop Nome: string;
+    prop Idade: int;
+    prop Salario: float;
 
     // Construtor
-    fn New() : void {
-        Nome = "João"
-        Idade = 25
-        Salario = 0.0
+    fn New(): void {
+        Nome = "João";
+        Idade = 25;
+        Salario = 0.0;
     }
 
     // Método principal
-    fn Main() : void {
-        print("Teste de interpolação de strings")
+    fn Main(): void {
+        print("Teste de interpolação de strings");
         
-        var mensagem = "Olá, meu nome é " + Nome + " e tenho " + Idade + " anos."
-        print(mensagem)
+        let mensagem = "Olá, meu nome é " + Nome + " e tenho " + Idade + " anos.";
+        print(mensagem);
         
-        var nome = "Maria"
-        var idade = 30
-        print("Olá, meu nome é " + nome + " e tenho " + idade + " anos.")
+        let nome = "Maria";
+        let idade = 30;
+        print("Olá, meu nome é " + nome + " e tenho " + idade + " anos.");
     }
 
     // Funções auxiliares
-    fn somar(a int, b int) : int {
-        return a + b
+    fn somar(a: int, b: int): int {
+        return a + b;
     }
 
-    fn imprimirMensagem(mensagem string) : void {
-        print("Mensagem: " + mensagem)
+    fn imprimirMensagem(mensagem: string): void {
+        print("Mensagem: " + mensagem);
     }
 
-    fn calcularMedia(a int, b int, c int) : float {
-        return (a + b + c) / 3.0
+    fn calcularMedia(a: int, b: int, c: int): float {
+        return (a + b + c) / 3.0;
     }
 }
 
 // Classe de exemplo
 class Pessoa {
-    prop string Nome
-    prop int Idade
-    prop float Salario
+    prop Nome: string;
+    prop Idade: int;
+    prop Salario: float;
 
-    fn New() : void {
-        Nome = "João"
-        Idade = 25
-        Salario = 6000.0
+    fn New(): void {
+        Nome = "João";
+        Idade = 25;
+        Salario = 6000.0;
     }
 
-    fn Apresentar() : void {
-        print("Olá, meu nome é " + Nome + " e tenho " + Idade + " anos.")
+    fn Apresentar(): void {
+        print("Olá, meu nome é " + Nome + " e tenho " + Idade + " anos.");
     }
 
-    fn CalcularAumento(percentual int) : float {
-        return Salario * (1 + (percentual / 100.0))
+    fn CalcularAumento(percentual: int): float {
+        return Salario * (1 + (percentual / 100.0));
     }
 } 

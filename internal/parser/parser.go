@@ -61,6 +61,7 @@ type IntegerLiteral struct {
 
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *IntegerLiteral) String() string       { return fmt.Sprintf("%d", il.Value) }
 
 // FloatLiteral representa um número decimal
 type FloatLiteral struct {
@@ -70,6 +71,7 @@ type FloatLiteral struct {
 
 func (fl *FloatLiteral) expressionNode()      {}
 func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FloatLiteral) String() string       { return fmt.Sprintf("%f", fl.Value) }
 
 // StringLiteral representa uma string
 type StringLiteral struct {
@@ -79,6 +81,7 @@ type StringLiteral struct {
 
 func (sl *StringLiteral) expressionNode()      {}
 func (sl *StringLiteral) TokenLiteral() string { return sl.Token.Literal }
+func (sl *StringLiteral) String() string       { return sl.Value }
 
 // Boolean representa um valor booleano
 type Boolean struct {
@@ -88,6 +91,7 @@ type Boolean struct {
 
 func (b *Boolean) expressionNode()      {}
 func (b *Boolean) TokenLiteral() string { return b.Token.Literal }
+func (b *Boolean) String() string       { return fmt.Sprintf("%t", b.Value) }
 
 // PrefixExpression representa uma expressão prefixada
 type PrefixExpression struct {
@@ -98,6 +102,14 @@ type PrefixExpression struct {
 
 func (pe *PrefixExpression) expressionNode()      {}
 func (pe *PrefixExpression) TokenLiteral() string { return pe.Token.Literal }
+func (pe *PrefixExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("(")
+	out.WriteString(pe.Operator)
+	out.WriteString(pe.Right.String())
+	out.WriteString(")")
+	return out.String()
+}
 
 // InfixExpression representa uma expressão infixada
 type InfixExpression struct {
@@ -109,6 +121,15 @@ type InfixExpression struct {
 
 func (ie *InfixExpression) expressionNode()      {}
 func (ie *InfixExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *InfixExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("(")
+	out.WriteString(ie.Left.String())
+	out.WriteString(" " + ie.Operator + " ")
+	out.WriteString(ie.Right.String())
+	out.WriteString(")")
+	return out.String()
+}
 
 // BlockStatement representa um bloco de código
 type BlockStatement struct {
@@ -136,6 +157,18 @@ type IfExpression struct {
 
 func (ie *IfExpression) expressionNode()      {}
 func (ie *IfExpression) TokenLiteral() string { return ie.Token.Literal }
+func (ie *IfExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("if")
+	out.WriteString(ie.Condition.String())
+	out.WriteString(" ")
+	out.WriteString(ie.Consequence.String())
+	if ie.Alternative != nil {
+		out.WriteString("else ")
+		out.WriteString(ie.Alternative.String())
+	}
+	return out.String()
+}
 
 // ReturnStatement representa uma declaração de retorno
 type ReturnStatement struct {
@@ -195,6 +228,18 @@ type FunctionLiteral struct {
 
 func (fl *FunctionLiteral) expressionNode()      {}
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+	params := []string{}
+	for _, p := range fl.Parameters {
+		params = append(params, p.String())
+	}
+	out.WriteString("fn(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(") ")
+	out.WriteString(fl.Body.String())
+	return out.String()
+}
 
 // CallExpression representa uma chamada de função
 type CallExpression struct {
@@ -205,6 +250,18 @@ type CallExpression struct {
 
 func (ce *CallExpression) expressionNode()      {}
 func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
+func (ce *CallExpression) String() string {
+	var out bytes.Buffer
+	args := []string{}
+	for _, a := range ce.Arguments {
+		args = append(args, a.String())
+	}
+	out.WriteString(ce.Function.String())
+	out.WriteString("(")
+	out.WriteString(strings.Join(args, ", "))
+	out.WriteString(")")
+	return out.String()
+}
 
 // ClassStatement representa uma declaração de classe
 type ClassStatement struct {
@@ -287,6 +344,12 @@ type InstanceLiteral struct {
 
 func (il *InstanceLiteral) expressionNode()      {}
 func (il *InstanceLiteral) TokenLiteral() string { return il.Token.Literal }
+func (il *InstanceLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("new ")
+	out.WriteString(il.Class.String())
+	return out.String()
+}
 
 // PropertyAccess representa um acesso a propriedade
 type PropertyAccess struct {
@@ -297,6 +360,13 @@ type PropertyAccess struct {
 
 func (pa *PropertyAccess) expressionNode()      {}
 func (pa *PropertyAccess) TokenLiteral() string { return pa.Token.Literal }
+func (pa *PropertyAccess) String() string {
+	var out bytes.Buffer
+	out.WriteString(pa.Object.String())
+	out.WriteString(".")
+	out.WriteString(pa.Property.String())
+	return out.String()
+}
 
 // NewExpression representa uma expressão de instanciação de classe
 type NewExpression struct {
@@ -462,6 +532,10 @@ func (p *Parser) parsePropertyStatement() *PropertyStatement {
 
 	stmt.Name = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
+	if !p.expectPeek(lexer.TokenColon) {
+		return nil
+	}
+
 	if !p.expectPeek(lexer.TokenIdent) {
 		return nil
 	}
@@ -490,6 +564,10 @@ func (p *Parser) parseFunctionStatement() *FunctionStatement {
 
 	stmt.Parameters = p.parseFunctionParameters()
 
+	if !p.expectPeek(lexer.TokenColon) {
+		return nil
+	}
+
 	if !p.expectPeek(lexer.TokenIdent) {
 		return nil
 	}
@@ -516,12 +594,31 @@ func (p *Parser) parseFunctionParameters() []*Identifier {
 	p.nextToken()
 
 	ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.expectPeek(lexer.TokenColon) {
+		return nil
+	}
+
+	if !p.expectPeek(lexer.TokenIdent) {
+		return nil
+	}
+
 	identifiers = append(identifiers, ident)
 
 	for p.peekTokenIs(lexer.TokenComma) {
 		p.nextToken()
 		p.nextToken()
+
 		ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+		if !p.expectPeek(lexer.TokenColon) {
+			return nil
+		}
+
+		if !p.expectPeek(lexer.TokenIdent) {
+			return nil
+		}
+
 		identifiers = append(identifiers, ident)
 	}
 
