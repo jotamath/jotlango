@@ -3,22 +3,42 @@ import "math"
 import "io"
 
 class MathOperations {
-    fn basicOperations() : void {
-        // Addition
-        sum = 10 + 20
-        io.println("Sum: {sum}")
-
-        // Subtraction
-        diff = 30 - 15
-        io.println("Difference: {diff}")
-
-        // Multiplication
-        product = 6 * 8
-        io.println("Product: {product}")
-
-        // Division
-        quotient = 100 / 5
-        io.println("Quotient: {quotient}")
+    fn Main(): void {
+        // Operações básicas
+        var a: int = 10
+        var b: int = 5
+        
+        print("Soma: " + (a + b))
+        print("Subtração: " + (a - b))
+        print("Multiplicação: " + (a * b))
+        print("Divisão: " + (a / b))
+        print("Resto: " + (a % b))
+        
+        // Operações com float
+        var x: float = 10.5
+        var y: float = 2.5
+        
+        print("\nOperações com float:")
+        print("Soma: " + (x + y))
+        print("Subtração: " + (x - y))
+        print("Multiplicação: " + (x * y))
+        print("Divisão: " + (x / y))
+        
+        // Operações de comparação
+        print("\nOperações de comparação:")
+        print("a > b: " + (a > b))
+        print("a < b: " + (a < b))
+        print("a == b: " + (a == b))
+        print("a != b: " + (a != b))
+        
+        // Operações lógicas
+        var verdadeiro: bool = true
+        var falso: bool = false
+        
+        print("\nOperações lógicas:")
+        print("E: " + (verdadeiro && falso))
+        print("OU: " + (verdadeiro || falso))
+        print("NÃO: " + (!verdadeiro))
     }
 
     fn trigonometry() : void {
@@ -81,7 +101,7 @@ calculator = new MathOperations {}
 
 // Run demonstrations
 io.println("=== Basic Operations ===")
-call calculator.basicOperations()
+call calculator.Main()
 
 io.println("\n=== Trigonometry ===")
 call calculator.trigonometry()

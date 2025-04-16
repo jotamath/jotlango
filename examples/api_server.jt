@@ -5,55 +5,43 @@ import "math"
 
 // API de calculadora
 class CalculadoraApi {
-    fn somar(req http.Request) : http.Response {
-        a = req.Query["a"]
-        b = req.Query["b"]
+    fn Somar(req: Request): Response {
+        var a: float = float.Parse(req.Query["a"])
+        var b: float = float.Parse(req.Query["b"])
         
-        resultado = math.parse(a) + math.parse(b)
+        var resultado: float = a + b
         
-        resp = new http.Response {
-            Status = 200,
-            Headers = {}
-        }
-        
-        resp.json({
-            "resultado" = resultado
-        })
+        var resp: Response = new Response()
+        resp.StatusCode = 200
+        resp.Body = "{\"resultado\": " + resultado + "}"
         
         return resp
     }
     
-    fn raizQuadrada(req http.Request) : http.Response {
-        numero = req.Query["numero"]
+    fn RaizQuadrada(req: Request): Response {
+        var numero: float = float.Parse(req.Query["numero"])
         
-        resultado = math.sqrt(math.parse(numero))
+        var resultado: float = math.Sqrt(numero)
         
-        resp = new http.Response {
-            Status = 200,
-            Headers = {}
-        }
-        
-        resp.json({
-            "resultado" = resultado
-        })
+        var resp: Response = new Response()
+        resp.StatusCode = 200
+        resp.Body = "{\"resultado\": " + resultado + "}"
         
         return resp
     }
 }
 
-// Criar servidor
-servidor = new http.Server {
-    Port = 8080,
-    Routes = {}
-}
-
-// Criar API
-api = new CalculadoraApi {}
-
-// Configurar rotas
-servidor.get("/somar", api.somar)
-servidor.get("/raiz", api.raizQuadrada)
-
-// Iniciar servidor
-io.println("Servidor iniciado na porta 8080...")
-call servidor.listen() 
+class Programa {
+    fn Main(): void {
+        var servidor: Server = new Server()
+        servidor.Port = 8080
+        
+        var api: CalculadoraApi = new CalculadoraApi()
+        
+        servidor.AddRoute("/somar", api.Somar)
+        servidor.AddRoute("/raiz", api.RaizQuadrada)
+        
+        print("Servidor iniciado na porta 8080...")
+        servidor.Start()
+    }
+} 

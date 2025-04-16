@@ -3,93 +3,102 @@ import "http"
 import "io"
 import "crypto"
 
-class User {
+class Usuario {
     prop string Id
     prop string Email
-    prop string PasswordHash
-    prop list<string> Roles
-    prop int Points
-    prop string CreatedAt
-
-    func AddRole(string role) {
-        Roles.Add(role)
-        Points = Points + 10
-        print("Role '{role}' added. User now has {Points} points.")
+    prop string SenhaHash
+    prop list[string] Roles
+    prop int Pontos
+    prop string DataCriacao
+    
+    fn New(): void {
+        this.Roles = list[string]{}
+        this.Pontos = 0
     }
-
-    func ToJson() -> map<string, any> {
+    
+    fn AdicionarRole(role: string): void {
+        this.Roles.Add(role)
+        this.Pontos = this.Pontos + 10
+    }
+    
+    fn ToJson(): map[string]string {
         return {
-            "id": Id,
-            "email": Email,
-            "roles": Roles,
-            "points": Points,
-            "createdAt": CreatedAt
+            "id": this.Id,
+            "email": this.Email,
+            "roles": this.Roles.ToString(),
+            "pontos": this.Pontos.ToString(),
+            "dataCriacao": this.DataCriacao
         }
     }
 }
 
 class AuthApi {
-    prop map<string, User> Users
-
-    func Register(Request req) -> Response {
-        email = req.Body["email"]
-        password = req.Body["password"]
-
-        // Check if user exists
-        for _, user in Users {
-            if user.Email == email {
-                return Response.Status(400).Json({
-                    "error": "Email already registered"
-                })
+    prop map[string]Usuario Usuarios
+    
+    fn New(): void {
+        this.Usuarios = map[string]Usuario{}
+    }
+    
+    fn Registrar(email: string, senha: string): map[string]string {
+        if this.Usuarios.ContainsKey(email) {
+            return {
+                "sucesso": "false",
+                "mensagem": "Email já cadastrado"
             }
         }
-
-        // Create new user
-        user = User.New()
-        user.Email = email
-        user.PasswordHash = password // TODO: Implement proper hashing
-        user.Roles = []
-        user.Points = 0
-        user.CreatedAt = DateTime.Now()
-
-        Users[email] = user
-
-        return Response.Json({
-            "message": "User registered successfully",
-            "user": user.ToJson()
-        })
-    }
-
-    func Login(Request req) -> Response {
-        email = req.Body["email"]
-        password = req.Body["password"]
-
-        user = Users[email]
-        if user == null {
-            return Response.Status(401).Json({
-                "error": "Invalid credentials"
-            })
+        
+        var usuario: Usuario = new Usuario()
+        usuario.Id = "user_" + DateTime.Now.Ticks
+        usuario.Email = email
+        usuario.SenhaHash = senha // Em produção, usar hash seguro
+        usuario.DataCriacao = DateTime.Now.ToString()
+        
+        this.Usuarios[email] = usuario
+        return {
+            "sucesso": "true",
+            "mensagem": "Usuário registrado com sucesso"
         }
-
-        // TODO: Implement proper password verification
-        if user.PasswordHash != password {
-            return Response.Status(401).Json({
-                "error": "Invalid credentials"
-            })
+    }
+    
+    fn Login(email: string, senha: string): map[string]string {
+        if !this.Usuarios.ContainsKey(email) {
+            return {
+                "sucesso": "false",
+                "mensagem": "Credenciais inválidas"
+            }
         }
-
-        return Response.Json({
-            "message": "Login successful",
-            "user": user.ToJson()
-        })
+        
+        var usuario: Usuario = this.Usuarios[email]
+        if usuario.SenhaHash == senha { // Em produção, comparar hashes
+            return {
+                "sucesso": "true",
+                "mensagem": "Login realizado com sucesso",
+                "usuario": usuario.ToJson()
+            }
+        }
+        
+        return {
+            "sucesso": "false",
+            "mensagem": "Credenciais inválidas"
+        }
     }
+}
 
-    fn generateId() : string {
-        return "user_" + Users.length() + 1
-    }
-
-    fn getCurrentTime() : string {
-        return __native_current_time()
+class Programa {
+    fn Main(): void {
+        var api: AuthApi = new AuthApi()
+        
+        // Teste de registro
+        var resultadoRegistro: map[string]string = api.Registrar("usuario@teste.com", "senha123")
+        print("Resultado do registro: " + resultadoRegistro["mensagem"])
+        
+        // Teste de login
+        var resultadoLogin: map[string]string = api.Login("usuario@teste.com", "senha123")
+        print("Resultado do login: " + resultadoLogin["mensagem"])
+        
+        // Teste de login com credenciais inválidas
+        var resultadoLoginInvalido: map[string]string = api.Login("usuario@teste.com", "senhaerrada")
+        print("Resultado do login inválido: " + resultadoLoginInvalido["mensagem"])
     }
 }
 
@@ -101,7 +110,7 @@ server = new http.Server {
 
 // Create API instance
 api = new AuthApi {
-    Users = {}
+    Usuarios = {}
 }
 
 // Configure routes

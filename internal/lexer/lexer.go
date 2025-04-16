@@ -32,6 +32,7 @@ const (
 	TokenEQ       = "=="
 	TokenNotEQ    = "!="
 	TokenColon    = ":"
+	TokenNewLine  = "NEWLINE"
 
 	// Delimitadores
 	TokenComma     = ","
@@ -43,16 +44,24 @@ const (
 	TokenDot       = "."
 
 	// Palavras-chave
-	TokenFunction = "FUNCTION"
-	TokenLet      = "LET"
-	TokenTrue     = "TRUE"
-	TokenFalse    = "FALSE"
-	TokenIf       = "IF"
-	TokenElse     = "ELSE"
-	TokenReturn   = "RETURN"
-	TokenClass    = "CLASS"
-	TokenProp     = "PROP"
-	TokenNew      = "NEW"
+	TokenFunction   = "fn"
+	TokenLet        = "let"
+	TokenTrue       = "true"
+	TokenFalse      = "false"
+	TokenIf         = "if"
+	TokenElse       = "else"
+	TokenReturn     = "return"
+	TokenClass      = "class"
+	TokenProp       = "prop"
+	TokenNew        = "new"
+	TokenVar        = "var"
+	TokenVoid       = "void"
+	TokenTypeInt    = "int"
+	TokenTypeFloat  = "float"
+	TokenTypeString = "string"
+	TokenTypeBool   = "bool"
+	TokenCall       = "call"
+	TokenPrint      = "print"
 )
 
 var keywords = map[string]TokenType{
@@ -65,6 +74,14 @@ var keywords = map[string]TokenType{
 	"else":   TokenElse,
 	"return": TokenReturn,
 	"new":    TokenNew,
+	"var":    TokenVar,
+	"void":   TokenVoid,
+	"int":    TokenTypeInt,
+	"float":  TokenTypeFloat,
+	"string": TokenTypeString,
+	"bool":   TokenTypeBool,
+	"call":   TokenCall,
+	"print":  TokenPrint,
 }
 
 // Lexer representa o analisador léxico
@@ -109,6 +126,13 @@ func (l *Lexer) NextToken() Token {
 		} else {
 			tok = newToken(TokenAssign, l.ch)
 		}
+	case '/':
+		if l.peekChar() == '/' {
+			l.skipComment()
+			return l.NextToken()
+		} else {
+			tok = newToken(TokenSlash, l.ch)
+		}
 	case ':':
 		tok = newToken(TokenColon, l.ch)
 	case '+':
@@ -126,8 +150,6 @@ func (l *Lexer) NextToken() Token {
 		}
 	case '*':
 		tok = newToken(TokenAsterisk, l.ch)
-	case '/':
-		tok = newToken(TokenSlash, l.ch)
 	case '<':
 		tok = newToken(TokenLT, l.ch)
 	case '>':
@@ -149,6 +171,9 @@ func (l *Lexer) NextToken() Token {
 	case '"':
 		tok.Type = TokenString
 		tok.Literal = l.readString()
+		return tok
+	case '\n':
+		tok = newToken(TokenNewLine, l.ch)
 	case 0:
 		tok.Literal = ""
 		tok.Type = TokenEOF
@@ -215,7 +240,8 @@ func (l *Lexer) readString() string {
 			break
 		}
 	}
-	return l.input[position:l.position]
+	l.readChar() // avança o cursor após a aspas de fechamento
+	return l.input[position : l.position-1]
 }
 
 // peekChar retorna o próximo caractere sem avançar a posição
@@ -247,4 +273,22 @@ func lookupIdent(ident string) TokenType {
 		return tok
 	}
 	return TokenIdent
+}
+
+func (l *Lexer) skipComment() {
+	// Consumir o segundo '/'
+	l.readChar()
+
+	// Pular até encontrar uma nova linha ou EOF
+	for l.ch != '\n' && l.ch != 0 {
+		l.readChar()
+	}
+
+	// Pular a nova linha
+	if l.ch == '\n' {
+		l.readChar()
+	}
+
+	// Pular espaços em branco após o comentário
+	l.skipWhitespace()
 }

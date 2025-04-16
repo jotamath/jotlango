@@ -213,12 +213,35 @@ require (
 # Instalar dependências
 go mod tidy
 
-# Compilar o interpretador
-go build -o jot.exe ./cmd/jot
+# Compilar o programa
+go build -o jot.exe main.go
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Instalação concluída com sucesso!"
-    Write-Host "Para executar um arquivo .jt, use: jot run arquivo.jt"
-} else {
-    Write-Host "Erro ao compilar o interpretador. Verifique os logs acima." -ForegroundColor Red
-} 
+# Criar diretório para o JotLang no PATH do usuário
+$jotPath = "$env:USERPROFILE\JotLang"
+if (-not (Test-Path $jotPath)) {
+    New-Item -ItemType Directory -Path $jotPath
+}
+
+# Mover o executável para o diretório
+Copy-Item -Force jot.exe $jotPath
+
+# Criar arquivo batch para executar o JotLang
+@"
+@echo off
+if "%1"=="run" (
+    %~dp0jot.exe run %2
+) else (
+    echo Comando desconhecido: %1
+    echo Uso: jot run <arquivo.jt>
+)
+"@ | Out-File -FilePath "$jotPath\jot.bat" -Encoding utf8
+
+# Adicionar ao PATH se ainda não estiver
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if (-not $userPath.Contains($jotPath)) {
+    [Environment]::SetEnvironmentVariable("Path", "$userPath;$jotPath", "User")
+}
+
+Write-Host "JotLang instalado com sucesso!"
+Write-Host "Agora você pode usar 'jot run arquivo.jt' em qualquer lugar."
+Write-Host "Reinicie o PowerShell para que as alterações no PATH tenham efeito." 

@@ -2,150 +2,101 @@
 import "http"
 import "io"
 
-class Task {
-    prop string Id
-    prop string Title
-    prop bool IsComplete
-    prop int Priority
-    prop string CreatedAt
-
-    fn markAsComplete() : void {
-        IsComplete = true
-    }
-
-    fn toJson() : map<string, any> {
-        return {
-            "id" = Id,
-            "title" = Title,
-            "isComplete" = IsComplete,
-            "priority" = Priority,
-            "createdAt" = CreatedAt
-        }
-    }
+class Tarefa {
+    prop int Id
+    prop string Titulo
+    prop string Descricao
+    prop bool Concluida
+    prop string DataCriacao
+    prop string DataConclusao
 }
 
 class TaskApi {
-    prop map<string, Task> Tasks
-
-    fn create(req http.Request) : http.Response {
-        task = new Task {
-            Id = generateId(),
-            Title = req.Body["title"],
-            IsComplete = false,
-            Priority = req.Body["priority"],
-            CreatedAt = getCurrentTime()
-        }
-
-        Tasks[task.Id] = task
-
-        resp = new http.Response {
-            Status = 201,
-            Headers = {}
-        }
-        resp.json(task.toJson())
-        return resp
+    prop map[int]Tarefa Tarefas
+    prop int ProximoId
+    
+    fn New(): void {
+        this.Tarefas = map[int]Tarefa{}
+        this.ProximoId = 1
     }
-
-    fn getAll(req http.Request) : http.Response {
-        taskList = []
-        for id, task in Tasks {
-            taskList.add(task.toJson())
-        }
-
-        resp = new http.Response {
-            Status = 200,
-            Headers = {}
-        }
-        resp.json(taskList)
-        return resp
+    
+    fn CriarTarefa(titulo: string, descricao: string): Tarefa {
+        var tarefa: Tarefa = new Tarefa()
+        tarefa.Id = this.ProximoId
+        tarefa.Titulo = titulo
+        tarefa.Descricao = descricao
+        tarefa.Concluida = false
+        tarefa.DataCriacao = DateTime.Now.ToString()
+        
+        this.Tarefas[this.ProximoId] = tarefa
+        this.ProximoId++
+        
+        return tarefa
     }
-
-    fn getById(req http.Request) : http.Response {
-        id = req.Query["id"]
-        task = Tasks[id]
-
-        if task == null {
-            resp = new http.Response {
-                Status = 404,
-                Headers = {}
-            }
-            resp.json({
-                "error" = "Task not found"
-            })
-            return resp
-        }
-
-        resp = new http.Response {
-            Status = 200,
-            Headers = {}
-        }
-        resp.json(task.toJson())
-        return resp
+    
+    fn ObterTarefa(id: int): Tarefa {
+        return this.Tarefas[id]
     }
-
-    fn update(req http.Request) : http.Response {
-        id = req.Query["id"]
-        task = Tasks[id]
-
-        if task == null {
-            resp = new http.Response {
-                Status = 404,
-                Headers = {}
-            }
-            resp.json({
-                "error" = "Task not found"
-            })
-            return resp
-        }
-
-        if req.Body["title"] != null {
-            task.Title = req.Body["title"]
-        }
-        if req.Body["priority"] != null {
-            task.Priority = req.Body["priority"]
-        }
-        if req.Body["isComplete"] != null {
-            task.IsComplete = req.Body["isComplete"]
-        }
-
-        resp = new http.Response {
-            Status = 200,
-            Headers = {}
-        }
-        resp.json(task.toJson())
-        return resp
+    
+    fn AtualizarTarefa(id: int, titulo: string, descricao: string): Tarefa {
+        var tarefa: Tarefa = this.Tarefas[id]
+        tarefa.Titulo = titulo
+        tarefa.Descricao = descricao
+        return tarefa
     }
-
-    fn delete(req http.Request) : http.Response {
-        id = req.Query["id"]
-        task = Tasks[id]
-
-        if task == null {
-            resp = new http.Response {
-                Status = 404,
-                Headers = {}
-            }
-            resp.json({
-                "error" = "Task not found"
-            })
-            return resp
-        }
-
-        Tasks.remove(id)
-
-        resp = new http.Response {
-            Status = 204,
-            Headers = {}
-        }
-        return resp
+    
+    fn ConcluirTarefa(id: int): Tarefa {
+        var tarefa: Tarefa = this.Tarefas[id]
+        tarefa.Concluida = true
+        tarefa.DataConclusao = DateTime.Now.ToString()
+        return tarefa
     }
-
-    fn generateId() : string {
-        return "task_" + Tasks.length() + 1
+    
+    fn DeletarTarefa(id: int): void {
+        delete this.Tarefas[id]
     }
+    
+    fn ListarTarefas(): map[int]Tarefa {
+        return this.Tarefas
+    }
+}
 
-    fn getCurrentTime() : string {
-        return __native_current_time()
+class Programa {
+    fn Main(): void {
+        var api: TaskApi = new TaskApi()
+        
+        // Criar tarefas
+        var tarefa1: Tarefa = api.CriarTarefa("Estudar JotLang", "Aprender a sintaxe básica")
+        var tarefa2: Tarefa = api.CriarTarefa("Fazer exercícios", "Praticar com exemplos")
+        
+        // Listar tarefas
+        print("Tarefas criadas:")
+        for var id: int, var tarefa: Tarefa in api.ListarTarefas() {
+            print("ID: " + id)
+            print("Título: " + tarefa.Titulo)
+            print("Descrição: " + tarefa.Descricao)
+            print("Concluída: " + tarefa.Concluida)
+            print("---")
+        }
+        
+        // Atualizar tarefa
+        api.AtualizarTarefa(1, "Estudar JotLang Avançado", "Aprender recursos avançados")
+        
+        // Concluir tarefa
+        api.ConcluirTarefa(2)
+        
+        // Deletar tarefa
+        api.DeletarTarefa(1)
+        
+        // Listar tarefas atualizadas
+        print("\nTarefas atualizadas:")
+        for var id: int, var tarefa: Tarefa in api.ListarTarefas() {
+            print("ID: " + id)
+            print("Título: " + tarefa.Titulo)
+            print("Descrição: " + tarefa.Descricao)
+            print("Concluída: " + tarefa.Concluida)
+            print("---")
+        }
     }
 }
 
@@ -157,7 +108,7 @@ server = new http.Server {
 
 // Create API instance
 api = new TaskApi {
-    Tasks = {}
+    Tarefas = {}
 }
 
 // Configure routes

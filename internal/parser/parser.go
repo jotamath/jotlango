@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"jotlango/internal/lexer"
+	"strconv"
 	"strings"
 )
 
@@ -38,6 +39,14 @@ func (p *Program) TokenLiteral() string {
 	return ""
 }
 
+func (p *Program) String() string {
+	var out string
+	for _, s := range p.Statements {
+		out += s.String()
+	}
+	return out
+}
+
 // ExpressionStatement representa uma expressão como declaração
 type ExpressionStatement struct {
 	Token      lexer.Token
@@ -61,7 +70,7 @@ type IntegerLiteral struct {
 
 func (il *IntegerLiteral) expressionNode()      {}
 func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
-func (il *IntegerLiteral) String() string       { return fmt.Sprintf("%d", il.Value) }
+func (il *IntegerLiteral) String() string       { return strconv.FormatInt(il.Value, 10) }
 
 // FloatLiteral representa um número decimal
 type FloatLiteral struct {
@@ -71,7 +80,7 @@ type FloatLiteral struct {
 
 func (fl *FloatLiteral) expressionNode()      {}
 func (fl *FloatLiteral) TokenLiteral() string { return fl.Token.Literal }
-func (fl *FloatLiteral) String() string       { return fmt.Sprintf("%f", fl.Value) }
+func (fl *FloatLiteral) String() string       { return strconv.FormatFloat(fl.Value, 'f', -1, 64) }
 
 // StringLiteral representa uma string
 type StringLiteral struct {
@@ -188,22 +197,26 @@ func (rs *ReturnStatement) String() string {
 	return out.String()
 }
 
-// LetStatement representa uma declaração de variável
-type LetStatement struct {
-	Token lexer.Token
+// VarStatement representa uma declaração de variável com tipo
+type VarStatement struct {
+	Token lexer.Token // o token 'var'
 	Name  *Identifier
+	Type  *Identifier
 	Value Expression
 }
 
-func (ls *LetStatement) statementNode()       {}
-func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
-func (ls *LetStatement) String() string {
+func (vs *VarStatement) statementNode()       {}
+func (vs *VarStatement) TokenLiteral() string { return vs.Token.Literal }
+func (vs *VarStatement) String() string {
 	var out bytes.Buffer
-	out.WriteString(ls.TokenLiteral() + " ")
-	out.WriteString(ls.Name.String())
-	out.WriteString(" = ")
-	if ls.Value != nil {
-		out.WriteString(ls.Value.String())
+	out.WriteString(vs.TokenLiteral() + " ")
+	out.WriteString(vs.Name.String())
+	if vs.Type != nil {
+		out.WriteString(": " + vs.Type.String())
+	}
+	if vs.Value != nil {
+		out.WriteString(" = ")
+		out.WriteString(vs.Value.String())
 	}
 	out.WriteString(";")
 	return out.String()
@@ -265,26 +278,35 @@ func (ce *CallExpression) String() string {
 
 // ClassStatement representa uma declaração de classe
 type ClassStatement struct {
-	Token      lexer.Token
-	Name       *Identifier
-	Properties []*PropertyStatement
-	Methods    []*FunctionStatement
+	Token lexer.Token
+	Name  *Identifier
+	Body  *BlockStatement
 }
 
-func (cs *ClassStatement) statementNode()       {}
+func (cs *ClassStatement) expressionNode()      {}
 func (cs *ClassStatement) TokenLiteral() string { return cs.Token.Literal }
 func (cs *ClassStatement) String() string {
 	var out bytes.Buffer
 	out.WriteString("class ")
 	out.WriteString(cs.Name.String())
 	out.WriteString(" {")
-	for _, prop := range cs.Properties {
-		out.WriteString(prop.String())
-	}
-	for _, method := range cs.Methods {
-		out.WriteString(method.String())
-	}
+	out.WriteString(cs.Body.String())
 	out.WriteString("}")
+	return out.String()
+}
+
+// CallStatement representa uma chamada de função
+type CallStatement struct {
+	Token    lexer.Token
+	Function Expression
+}
+
+func (cs *CallStatement) expressionNode()      {}
+func (cs *CallStatement) TokenLiteral() string { return cs.Token.Literal }
+func (cs *CallStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString("call ")
+	out.WriteString(cs.Function.String())
 	return out.String()
 }
 
@@ -394,21 +416,38 @@ func (ne *NewExpression) String() string {
 	return out.String()
 }
 
+// AssignmentExpression representa uma atribuição
+type AssignmentExpression struct {
+	Token lexer.Token
+	Left  Expression
+	Value Expression
+}
+
+func (ae *AssignmentExpression) expressionNode()      {}
+func (ae *AssignmentExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *AssignmentExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString(ae.Left.String())
+	out.WriteString(" = ")
+	out.WriteString(ae.Value.String())
+	return out.String()
+}
+
 // Parser representa o analisador sintático
 type Parser struct {
-	l         *lexer.Lexer
+	l *lexer.Lexer
+
 	curToken  lexer.Token
 	peekToken lexer.Token
-	errors    []string
 
 	prefixParseFns map[lexer.TokenType]prefixParseFn
 	infixParseFns  map[lexer.TokenType]infixParseFn
+
+	errors []string
 }
 
-type (
-	prefixParseFn func() Expression
-	infixParseFn  func(Expression) Expression
-)
+type prefixParseFn func() Expression
+type infixParseFn func(Expression) Expression
 
 // Precedências dos operadores
 const (
@@ -439,15 +478,36 @@ var precedences = map[lexer.TokenType]int{
 // NewParser cria um novo parser
 func NewParser(l *lexer.Lexer) *Parser {
 	p := &Parser{
-		l:      l,
-		errors: []string{},
+		l:              l,
+		prefixParseFns: make(map[lexer.TokenType]prefixParseFn),
+		infixParseFns:  make(map[lexer.TokenType]infixParseFn),
+		errors:         []string{},
 	}
 
-	p.prefixParseFns = make(map[lexer.TokenType]prefixParseFn)
-	p.infixParseFns = make(map[lexer.TokenType]infixParseFn)
-
+	// Registrar funções de parsing de prefixo
 	p.registerPrefix(lexer.TokenIdent, p.parseIdentifier)
-	p.registerPrefix(lexer.TokenNew, p.parseNewExpression)
+	p.registerPrefix(lexer.TokenString, p.parseStringLiteral)
+	p.registerPrefix(lexer.TokenInt, p.parseIntegerLiteral)
+	p.registerPrefix(lexer.TokenFloat, p.parseFloatLiteral)
+	p.registerPrefix(lexer.TokenTrue, p.parseBooleanLiteral)
+	p.registerPrefix(lexer.TokenFalse, p.parseBooleanLiteral)
+	p.registerPrefix(lexer.TokenFunction, p.parseFunctionLiteral)
+	p.registerPrefix(lexer.TokenClass, p.parseClassStatement)
+	p.registerPrefix(lexer.TokenCall, p.parseCallStatement)
+	p.registerPrefix(lexer.TokenPrint, p.parsePrintStatement)
+	p.registerPrefix(lexer.TokenLParen, p.parseGroupedExpression)
+
+	// Registrar funções de parsing de infix
+	p.registerInfix(lexer.TokenPlus, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenMinus, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenSlash, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenAsterisk, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenEQ, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenNotEQ, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenLT, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenGT, p.parseInfixExpression)
+	p.registerInfix(lexer.TokenDot, p.parsePropertyAccess)
+	p.registerInfix(lexer.TokenLParen, p.parseCallExpression)
 
 	p.nextToken()
 	p.nextToken()
@@ -458,6 +518,13 @@ func NewParser(l *lexer.Lexer) *Parser {
 func (p *Parser) nextToken() {
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
+
+	// Ignorar comentários
+	if p.curToken.Type == lexer.TokenSlash && p.peekToken.Type == lexer.TokenSlash {
+		for !p.curTokenIs(lexer.TokenEOF) && !p.curTokenIs(lexer.TokenNewLine) {
+			p.nextToken()
+		}
+	}
 }
 
 func (p *Parser) ParseProgram() *Program {
@@ -478,18 +545,39 @@ func (p *Parser) ParseProgram() *Program {
 
 func (p *Parser) parseStatement() Statement {
 	switch p.curToken.Type {
+	case lexer.TokenVar:
+		return p.parseVarStatement()
+	case lexer.TokenReturn:
+		return p.parseReturnStatement()
 	case lexer.TokenClass:
-		return p.parseClassStatement()
+		stmt := p.parseClassStatement()
+		if stmt == nil {
+			return nil
+		}
+		return &ExpressionStatement{Token: p.curToken, Expression: stmt}
+	case lexer.TokenCall:
+		stmt := p.parseCallStatement()
+		if stmt == nil {
+			return nil
+		}
+		return &ExpressionStatement{Token: p.curToken, Expression: stmt}
+	case lexer.TokenFunction:
+		return p.parseFunctionStatement()
+	case lexer.TokenPrint:
+		stmt := p.parsePrintStatement()
+		if stmt == nil {
+			return nil
+		}
+		return &ExpressionStatement{Token: p.curToken, Expression: stmt}
 	default:
-		return nil
+		return p.parseExpressionStatement()
 	}
 }
 
-func (p *Parser) parseClassStatement() Statement {
+func (p *Parser) parseClassStatement() Expression {
 	stmt := &ClassStatement{
-		Token:      p.curToken,
-		Properties: []*PropertyStatement{},
-		Methods:    []*FunctionStatement{},
+		Token: p.curToken,
+		Body:  &BlockStatement{Token: p.curToken},
 	}
 
 	if !p.expectPeek(lexer.TokenIdent) {
@@ -505,145 +593,30 @@ func (p *Parser) parseClassStatement() Statement {
 	p.nextToken()
 
 	for !p.curTokenIs(lexer.TokenRBrace) && !p.curTokenIs(lexer.TokenEOF) {
-		switch p.curToken.Type {
-		case lexer.TokenProp:
-			prop := p.parsePropertyStatement()
-			if prop != nil {
-				stmt.Properties = append(stmt.Properties, prop)
+		if p.curTokenIs(lexer.TokenSlash) && p.peekTokenIs(lexer.TokenSlash) {
+			// Consumir o comentário
+			for !p.curTokenIs(lexer.TokenEOF) && !p.curTokenIs(lexer.TokenSemicolon) && !p.curTokenIs(lexer.TokenNewLine) {
+				p.nextToken()
 			}
-		case lexer.TokenFunction:
-			method := p.parseFunctionStatement()
-			if method != nil {
-				stmt.Methods = append(stmt.Methods, method)
+			p.nextToken()
+			continue
+		}
+
+		if p.curTokenIs(lexer.TokenFunction) {
+			funcStmt := p.parseFunctionStatement()
+			if funcStmt != nil {
+				stmt.Body.Statements = append(stmt.Body.Statements, funcStmt)
+			}
+		} else {
+			statement := p.parseStatement()
+			if statement != nil {
+				stmt.Body.Statements = append(stmt.Body.Statements, statement)
 			}
 		}
 		p.nextToken()
 	}
 
 	return stmt
-}
-
-func (p *Parser) parsePropertyStatement() *PropertyStatement {
-	stmt := &PropertyStatement{Token: p.curToken}
-
-	if !p.expectPeek(lexer.TokenIdent) {
-		return nil
-	}
-
-	stmt.Name = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(lexer.TokenColon) {
-		return nil
-	}
-
-	if !p.expectPeek(lexer.TokenIdent) {
-		return nil
-	}
-
-	stmt.Type = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(lexer.TokenSemicolon) {
-		return nil
-	}
-
-	return stmt
-}
-
-func (p *Parser) parseFunctionStatement() *FunctionStatement {
-	stmt := &FunctionStatement{Token: p.curToken}
-
-	if !p.expectPeek(lexer.TokenIdent) {
-		return nil
-	}
-
-	stmt.Name = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(lexer.TokenLParen) {
-		return nil
-	}
-
-	stmt.Parameters = p.parseFunctionParameters()
-
-	if !p.expectPeek(lexer.TokenColon) {
-		return nil
-	}
-
-	if !p.expectPeek(lexer.TokenIdent) {
-		return nil
-	}
-
-	stmt.ReturnType = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(lexer.TokenLBrace) {
-		return nil
-	}
-
-	stmt.Body = p.parseBlockStatement()
-
-	return stmt
-}
-
-func (p *Parser) parseFunctionParameters() []*Identifier {
-	identifiers := []*Identifier{}
-
-	if p.peekTokenIs(lexer.TokenRParen) {
-		p.nextToken()
-		return identifiers
-	}
-
-	p.nextToken()
-
-	ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-	if !p.expectPeek(lexer.TokenColon) {
-		return nil
-	}
-
-	if !p.expectPeek(lexer.TokenIdent) {
-		return nil
-	}
-
-	identifiers = append(identifiers, ident)
-
-	for p.peekTokenIs(lexer.TokenComma) {
-		p.nextToken()
-		p.nextToken()
-
-		ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
-
-		if !p.expectPeek(lexer.TokenColon) {
-			return nil
-		}
-
-		if !p.expectPeek(lexer.TokenIdent) {
-			return nil
-		}
-
-		identifiers = append(identifiers, ident)
-	}
-
-	if !p.expectPeek(lexer.TokenRParen) {
-		return nil
-	}
-
-	return identifiers
-}
-
-func (p *Parser) parseBlockStatement() *BlockStatement {
-	block := &BlockStatement{Token: p.curToken}
-	block.Statements = []Statement{}
-
-	p.nextToken()
-
-	for !p.curTokenIs(lexer.TokenRBrace) && !p.curTokenIs(lexer.TokenEOF) {
-		stmt := p.parseStatement()
-		if stmt != nil {
-			block.Statements = append(block.Statements, stmt)
-		}
-		p.nextToken()
-	}
-
-	return block
 }
 
 func (p *Parser) parseIdentifier() Expression {
@@ -728,6 +701,7 @@ func (p *Parser) parseExpression(precedence int) Expression {
 		p.noPrefixParseFnError(p.curToken.Type)
 		return nil
 	}
+
 	leftExp := prefix()
 
 	for !p.peekTokenIs(lexer.TokenSemicolon) && precedence < p.peekPrecedence() {
@@ -744,26 +718,299 @@ func (p *Parser) parseExpression(precedence int) Expression {
 }
 
 func (p *Parser) parseExpressionList(end lexer.TokenType) []Expression {
-	expressions := []Expression{}
+	var list []Expression
 
 	if p.peekTokenIs(end) {
 		p.nextToken()
-		return expressions
+		return list
 	}
 
-	p.nextToken()
-
-	expressions = append(expressions, p.parseExpression(0))
+	list = append(list, p.parseExpression(LOWEST))
 
 	for p.peekTokenIs(lexer.TokenComma) {
 		p.nextToken()
 		p.nextToken()
-		expressions = append(expressions, p.parseExpression(0))
+		list = append(list, p.parseExpression(LOWEST))
 	}
 
 	if !p.expectPeek(end) {
 		return nil
 	}
 
-	return expressions
+	return list
+}
+
+func (p *Parser) parseVarStatement() *VarStatement {
+	stmt := &VarStatement{Token: p.curToken}
+
+	if !p.expectPeek(lexer.TokenIdent) {
+		return nil
+	}
+
+	stmt.Name = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if p.peekTokenIs(lexer.TokenColon) {
+		p.nextToken() // consume :
+		p.nextToken() // move to type
+		stmt.Type = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	}
+
+	if p.peekTokenIs(lexer.TokenAssign) {
+		p.nextToken() // consume =
+		p.nextToken() // move to value
+		stmt.Value = p.parseExpression(LOWEST)
+	}
+
+	if p.peekTokenIs(lexer.TokenSemicolon) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseReturnStatement() *ReturnStatement {
+	stmt := &ReturnStatement{Token: p.curToken}
+
+	if !p.expectPeek(lexer.TokenIdent) {
+		return nil
+	}
+
+	stmt.ReturnValue = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(lexer.TokenSemicolon) {
+		return nil
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpressionStatement() Statement {
+	stmt := &ExpressionStatement{Token: p.curToken}
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(lexer.TokenSemicolon) {
+		p.nextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseGroupedExpression() Expression {
+	p.nextToken()
+
+	exp := p.parseExpression(LOWEST)
+
+	if !p.expectPeek(lexer.TokenRParen) {
+		return nil
+	}
+
+	return exp
+}
+
+func (p *Parser) parseStringLiteral() Expression {
+	return &StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
+}
+
+func (p *Parser) parseIntegerLiteral() Expression {
+	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit := &IntegerLiteral{
+		Token: p.curToken,
+		Value: value,
+	}
+
+	return lit
+}
+
+func (p *Parser) parseFloatLiteral() Expression {
+	value, err := strconv.ParseFloat(p.curToken.Literal, 64)
+	if err != nil {
+		msg := fmt.Sprintf("could not parse %q as float", p.curToken.Literal)
+		p.errors = append(p.errors, msg)
+		return nil
+	}
+
+	lit := &FloatLiteral{
+		Token: p.curToken,
+		Value: value,
+	}
+
+	return lit
+}
+
+func (p *Parser) parseBooleanLiteral() Expression {
+	return &BooleanLiteral{Token: p.curToken, Value: p.curToken.Type == lexer.TokenTrue}
+}
+
+func (p *Parser) parseFunctionLiteral() Expression {
+	lit := &FunctionLiteral{Token: p.curToken}
+
+	if !p.expectPeek(lexer.TokenLParen) {
+		return nil
+	}
+
+	lit.Parameters = p.parseFunctionParameters()
+
+	if !p.expectPeek(lexer.TokenLBrace) {
+		return nil
+	}
+
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
+func (p *Parser) parseInfixExpression(left Expression) Expression {
+	expression := &InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	precedence := p.curPrecedence()
+	p.nextToken()
+	expression.Right = p.parseExpression(precedence)
+
+	return expression
+}
+
+func (p *Parser) parseCallExpression(function Expression) Expression {
+	exp := &CallExpression{Token: p.curToken, Function: function}
+	exp.Arguments = p.parseExpressionList(lexer.TokenRParen)
+	return exp
+}
+
+type BooleanLiteral struct {
+	Token lexer.Token
+	Value bool
+}
+
+func (bl *BooleanLiteral) expressionNode()      {}
+func (bl *BooleanLiteral) TokenLiteral() string { return bl.Token.Literal }
+func (bl *BooleanLiteral) String() string       { return strconv.FormatBool(bl.Value) }
+
+func (p *Parser) parsePropertyAccess(object Expression) Expression {
+	exp := &PropertyAccess{
+		Token:  p.curToken,
+		Object: object,
+	}
+
+	p.nextToken()
+	exp.Property = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	return exp
+}
+
+func (p *Parser) parseFunctionParameters() []*Identifier {
+	identifiers := []*Identifier{}
+
+	if p.peekTokenIs(lexer.TokenRParen) {
+		p.nextToken()
+		return identifiers
+	}
+
+	p.nextToken()
+	ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	identifiers = append(identifiers, ident)
+
+	for p.peekTokenIs(lexer.TokenComma) {
+		p.nextToken()
+		p.nextToken()
+		ident := &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+		identifiers = append(identifiers, ident)
+	}
+
+	if !p.expectPeek(lexer.TokenRParen) {
+		return nil
+	}
+
+	return identifiers
+}
+
+func (p *Parser) parseBlockStatement() *BlockStatement {
+	block := &BlockStatement{Token: p.curToken}
+	block.Statements = []Statement{}
+
+	p.nextToken()
+
+	for !p.curTokenIs(lexer.TokenRBrace) && !p.curTokenIs(lexer.TokenEOF) {
+		stmt := p.parseStatement()
+		if stmt != nil {
+			block.Statements = append(block.Statements, stmt)
+		}
+		p.nextToken()
+	}
+
+	return block
+}
+
+func (p *Parser) parseCallStatement() Expression {
+	stmt := &CallStatement{
+		Token: p.curToken,
+	}
+
+	if !p.expectPeek(lexer.TokenIdent) {
+		return nil
+	}
+
+	stmt.Function = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	return stmt
+}
+
+func (p *Parser) parseFunctionStatement() Statement {
+	stmt := &FunctionStatement{
+		Token: p.curToken,
+	}
+
+	if !p.expectPeek(lexer.TokenIdent) {
+		return nil
+	}
+
+	stmt.Name = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+	if !p.expectPeek(lexer.TokenLParen) {
+		return nil
+	}
+
+	stmt.Parameters = p.parseFunctionParameters()
+
+	if p.peekTokenIs(lexer.TokenColon) {
+		p.nextToken() // consume :
+		p.nextToken() // move to return type
+		stmt.ReturnType = &Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	}
+
+	if !p.expectPeek(lexer.TokenLBrace) {
+		return nil
+	}
+
+	stmt.Body = p.parseBlockStatement()
+
+	return stmt
+}
+
+func (p *Parser) parsePrintStatement() Expression {
+	token := p.curToken
+
+	if !p.expectPeek(lexer.TokenLParen) {
+		return nil
+	}
+
+	args := p.parseExpressionList(lexer.TokenRParen)
+	if args == nil {
+		return nil
+	}
+
+	return &CallExpression{
+		Token:     token,
+		Function:  &Identifier{Token: token, Value: "print"},
+		Arguments: args,
+	}
 }

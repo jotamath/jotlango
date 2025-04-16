@@ -10,118 +10,183 @@ class Mensagem {
     prop string Texto
     prop string Usuario
     prop string DataEnvio
+    
+    fn New(): void {
+        this.Id = ""
+        this.Texto = ""
+        this.Usuario = ""
+        this.DataEnvio = ""
+    }
 }
 
-@dto MensagemDTO {
-    prop id: guid
-    prop texto: string
-    prop usuario: string
-    prop dataEnvio: datetime
+class MensagemDTO {
+    prop string Id
+    prop string Texto
+    prop string Usuario
+    prop string DataEnvio
+    
+    fn New(): void {
+        this.Id = ""
+        this.Texto = ""
+        this.Usuario = ""
+        this.DataEnvio = ""
+    }
+    
+    fn FromMensagem(mensagem: Mensagem): void {
+        this.Id = mensagem.Id
+        this.Texto = mensagem.Texto
+        this.Usuario = mensagem.Usuario
+        this.DataEnvio = mensagem.DataEnvio
+    }
+    
+    fn ToJson(): map[string]string {
+        return {
+            "id": this.Id,
+            "texto": this.Texto,
+            "usuario": this.Usuario,
+            "dataEnvio": this.DataEnvio
+        }
+    }
 }
 
 class ChatRoom {
-    prop map<string, Connection> Clients
-    prop list<string> MessageHistory
-
-    func Broadcast(string message) {
-        MessageHistory.Add(message)
-        for id, client in Clients {
-            client.Send(message)
-        }
-    }
-
-    func AddClient(Connection conn) {
-        Clients[conn.Id] = conn
-        Broadcast("User {conn.Id} joined the chat")
-    }
-
-    func RemoveClient(Connection conn) {
-        Clients.Remove(conn.Id)
-        Broadcast("User {conn.Id} left the chat")
-    }
-
-    func HandleMessage(Connection conn, string message) {
-        Broadcast("User {conn.Id}: {message}")
-    }
-}
-
-// Create chat room
-chatRoom = ChatRoom.New()
-chatRoom.Clients = {}
-chatRoom.MessageHistory = []
-
-// Create WebSocket server
-wsServer = new websocket.Server {
-    Port = 8080,
-    Path = "/chat",
-
-    fn onConnect(conn websocket.Connection) : void {
-        chatRoom.AddClient(conn)
-        
-        // Send message history
-        for message in chatRoom.MessageHistory {
-            conn.send(message)
-        }
-    },
-
-    fn onMessage(conn websocket.Connection, message string) : void {
-        chatRoom.HandleMessage(conn, message)
-    },
-
-    fn onDisconnect(conn websocket.Connection) : void {
-        chatRoom.RemoveClient(conn)
-    }
-}
-
-// Start server
-io.println("WebSocket Chat Server started on ws://localhost:8080/chat")
-call wsServer.listen()
-
-@websocket("/chat")
-class ChatHub {
-    fn OnConnect(usuario: string) {
-        print("Conectado: {usuario}")
-        BroadcastMessage("Sistema", "{usuario} entrou no chat")
-    }
-
-    fn OnDisconnect(usuario: string) {
-        print("Desconectado: {usuario}")
-        BroadcastMessage("Sistema", "{usuario} saiu do chat")
-    }
-
-    fn OnMessage(usuario: string, mensagem: string) {
-        var novaMensagem = new Mensagem {
-            texto = mensagem,
-            usuario = usuario,
-            dataEnvio = now()
-        }
-        db.Mensagens.Add(novaMensagem)
-        db.SaveChanges()
-        BroadcastMessage(usuario, mensagem)
-    }
-
-    fn BroadcastMessage(usuario: string, mensagem: string) {
-        Clients.All.Send("ReceiveMessage", {
-            usuario = usuario,
-            mensagem = mensagem,
-            dataEnvio = now()
-        })
-    }
-
-    @httpget("/api/mensagens")
-    fn GetMensagens() : list<MensagemDTO> {
-        return db.Mensagens.Take(50).OrderBy("dataEnvio DESC")
-    }
-}
-
-// Example usage
-func Main() {
-    print("Chat server started")
+    prop map[string]Connection Clientes
+    prop list[string] HistoricoMensagens
     
-    // TODO: Implement WebSocket server
-    // server = WebSocketServer.New()
-    // server.OnConnect(chatRoom.AddClient)
-    // server.OnDisconnect(chatRoom.RemoveClient)
-    // server.OnMessage(chatRoom.HandleMessage)
-    // server.Listen(8080)
+    fn New(): void {
+        this.Clientes = map[string]Connection{}
+        this.HistoricoMensagens = list[string]{}
+    }
+    
+    fn Broadcast(mensagem: string): void {
+        this.HistoricoMensagens.Add(mensagem)
+        for var id: string, var cliente: Connection in this.Clientes {
+            cliente.Send(mensagem)
+        }
+    }
+    
+    fn AdicionarCliente(conn: Connection): void {
+        this.Clientes[conn.Id] = conn
+        this.Broadcast("Usuário " + conn.Id + " entrou no chat")
+    }
+    
+    fn RemoverCliente(conn: Connection): void {
+        delete this.Clientes[conn.Id]
+        this.Broadcast("Usuário " + conn.Id + " saiu do chat")
+    }
+    
+    fn ProcessarMensagem(conn: Connection, mensagem: string): void {
+        this.Broadcast("Usuário " + conn.Id + ": " + mensagem)
+    }
+}
+
+class ChatServer {
+    prop WSServer Server
+    prop ChatRoom Sala
+    
+    fn New(): void {
+        this.Server = new WSServer()
+        this.Server.Host = "localhost"
+        this.Server.Port = 8080
+        this.Server.Path = "/chat"
+        
+        this.Sala = new ChatRoom()
+    }
+    
+    fn Iniciar(): void {
+        this.Server.OnConnect = fn(conn: Connection): void {
+            this.Sala.AdicionarCliente(conn)
+            
+            // Enviar histórico de mensagens
+            for var mensagem: string in this.Sala.HistoricoMensagens {
+                conn.Send(mensagem)
+            }
+        }
+        
+        this.Server.OnMessage = fn(conn: Connection, mensagem: string): void {
+            this.Sala.ProcessarMensagem(conn, mensagem)
+        }
+        
+        this.Server.OnDisconnect = fn(conn: Connection): void {
+            this.Sala.RemoverCliente(conn)
+        }
+        
+        this.Server.Start()
+        print("Servidor de chat WebSocket iniciado em ws://" + this.Server.Host + ":" + this.Server.Port + this.Server.Path)
+    }
+}
+
+class ChatController {
+    prop map[string]Mensagem Mensagens
+    
+    fn New(): void {
+        this.Mensagens = map[string]Mensagem{}
+    }
+    
+    fn OnConnect(usuario: string): void {
+        print("Conectado: " + usuario)
+        this.BroadcastMessage("Sistema", usuario + " entrou no chat")
+    }
+    
+    fn OnDisconnect(usuario: string): void {
+        print("Desconectado: " + usuario)
+        this.BroadcastMessage("Sistema", usuario + " saiu do chat")
+    }
+    
+    fn OnMessage(usuario: string, mensagem: string): void {
+        var novaMensagem: Mensagem = new Mensagem()
+        novaMensagem.Texto = mensagem
+        novaMensagem.Usuario = usuario
+        novaMensagem.DataEnvio = DateTime.Now.ToString()
+        novaMensagem.Id = "msg_" + DateTime.Now.Ticks
+        
+        this.Mensagens[novaMensagem.Id] = novaMensagem
+        this.BroadcastMessage(usuario, mensagem)
+    }
+    
+    fn BroadcastMessage(usuario: string, mensagem: string): void {
+        var dados: map[string]string = {
+            "usuario": usuario,
+            "mensagem": mensagem,
+            "dataEnvio": DateTime.Now.ToString()
+        }
+        
+        // Simulação de broadcast para todos os clientes
+        print("Broadcast: " + usuario + " - " + mensagem)
+    }
+    
+    fn GetMensagens(): list[Mensagem] {
+        var resultado: list[Mensagem] = list[Mensagem]{}
+        for var _, var mensagem: Mensagem in this.Mensagens {
+            resultado.Add(mensagem)
+        }
+        return resultado
+    }
+}
+
+class Programa {
+    fn Main(): void {
+        var servidor: ChatServer = new ChatServer()
+        servidor.Iniciar()
+        
+        var controller: ChatController = new ChatController()
+        
+        // Simulando conexões
+        controller.OnConnect("cliente1")
+        controller.OnConnect("cliente2")
+        
+        // Simulando mensagens
+        controller.OnMessage("cliente1", "Olá, pessoal!")
+        controller.OnMessage("cliente2", "Oi, tudo bem?")
+        
+        // Simulando desconexão
+        controller.OnDisconnect("cliente1")
+        
+        // Listando mensagens
+        var mensagens: list[Mensagem] = controller.GetMensagens()
+        print("\nMensagens no histórico:")
+        for var mensagem: Mensagem in mensagens {
+            print(mensagem.Usuario + ": " + mensagem.Texto)
+        }
+    }
 }

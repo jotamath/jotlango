@@ -7,21 +7,45 @@ class Test {
 
     // Construtor
     fn New(): void {
-        Nome = "João";
-        Idade = 25;
-        Salario = 0.0;
+        this.Nome = "João";
+        this.Idade = 25;
+        this.Salario = 5000.0;
     }
 
     // Método principal
     fn Main(): void {
-        print("Teste de interpolação de strings");
+        // Inicializa a classe
+        this.New();
         
-        let mensagem = "Olá, meu nome é " + Nome + " e tenho " + Idade + " anos.";
-        print(mensagem);
+        // Teste de propriedades da classe
+        print("=== Teste de Propriedades ===");
+        print("Nome: " + this.Nome);
+        print("Idade: " + this.Idade);
+        print("Salário: " + this.Salario);
+        print("");
         
-        let nome = "Maria";
-        let idade = 30;
-        print("Olá, meu nome é " + nome + " e tenho " + idade + " anos.");
+        // Teste de operações matemáticas
+        print("=== Teste de Operações Matemáticas ===");
+        let soma = this.somar(10, 20);
+        print("10 + 20 = " + soma);
+        
+        let media = this.calcularMedia(60, 70, 80);
+        print("Média de 60, 70 e 80 = " + media);
+        print("");
+        
+        // Teste de strings
+        print("=== Teste de Strings ===");
+        let mensagem = "Olá, " + this.Nome + "!";
+        this.imprimirMensagem(mensagem);
+        print("");
+        
+        // Teste de outra classe
+        print("=== Teste de Outra Classe ===");
+        let pessoa = new Pessoa();
+        pessoa.Apresentar();
+        
+        let novoSalario = pessoa.CalcularAumento(10);
+        print("Novo salário com aumento de 10%: " + novoSalario);
     }
 
     // Funções auxiliares
@@ -30,7 +54,7 @@ class Test {
     }
 
     fn imprimirMensagem(mensagem: string): void {
-        print("Mensagem: " + mensagem);
+        print(mensagem);
     }
 
     fn calcularMedia(a: int, b: int, c: int): float {
@@ -40,21 +64,21 @@ class Test {
 
 // Classe de exemplo
 class Pessoa {
-    prop Nome: string;
-    prop Idade: int;
-    prop Salario: float;
-
-    fn New(): void {
-        Nome = "João";
-        Idade = 25;
-        Salario = 6000.0;
-    }
+    prop string Nome
+    prop int Idade
+    prop float Salario
 
     fn Apresentar(): void {
-        print("Olá, meu nome é " + Nome + " e tenho " + Idade + " anos.");
+        print("Nome: " + this.Nome)
+        print("Idade: " + this.Idade)
+        print("Salário: " + this.Salario)
     }
 
     fn CalcularAumento(percentual: int): float {
-        return Salario * (1 + (percentual / 100.0));
+        return this.Salario * (1 + (percentual / 100.0));
+    }
+
+    fn AumentarSalario(percentual: float): void {
+        this.Salario = this.Salario * (1 + percentual/100)
     }
 } 
