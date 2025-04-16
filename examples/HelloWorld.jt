@@ -7,3 +7,8 @@ class Programa {
         print("Olá, mundo!")
     }
 }
+
+// Criar instância e chamar Main
+var programa = new Programa()
+call programa.Main()
+

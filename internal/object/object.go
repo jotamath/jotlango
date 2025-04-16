@@ -1,9 +1,13 @@
 package object
 
 import (
+	"bytes"
 	"fmt"
+	"hash/fnv"
 	"jotlango/internal/ast"
 	"strings"
+
+	"github.com/jotlang/jotlango/internal/ast"
 )
 
 type ObjectType string
@@ -11,13 +15,14 @@ type ObjectType string
 const (
 	NULL_OBJ         = "NULL"
 	ERROR_OBJ        = "ERROR"
-	STRING_OBJ       = "STRING"
 	NUMBER_OBJ       = "NUMBER"
 	BOOLEAN_OBJ      = "BOOLEAN"
-	FUNCTION_OBJ     = "FUNCTION"
-	CLASS_OBJ        = "CLASS"
+	STRING_OBJ       = "STRING"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
+	FUNCTION_OBJ     = "FUNCTION"
 	BUILTIN_OBJ      = "BUILTIN"
+	ARRAY_OBJ        = "ARRAY"
+	HASH_OBJ         = "HASH"
 )
 
 type Object interface {
@@ -95,7 +100,7 @@ type Class struct {
 	Env  *Environment
 }
 
-func (c *Class) Type() ObjectType { return CLASS_OBJ }
+func (c *Class) Type() ObjectType { return INTEGER_OBJ }
 func (c *Class) Inspect() string  { return fmt.Sprintf("class %s", c.Name) }
 
 // ReturnValue representa um valor de retorno
@@ -152,3 +157,175 @@ var (
 	TRUE  = &Boolean{Value: true}
 	FALSE = &Boolean{Value: false}
 )
+
+// Array representa um array
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Type() ObjectType { return ARRAY_OBJ }
+func (a *Array) Inspect() string {
+	var out bytes.Buffer
+	elements := []string{}
+	for _, e := range a.Elements {
+		elements = append(elements, e.Inspect())
+	}
+	out.WriteString("[")
+	out.WriteString(strings.Join(elements, ", "))
+	out.WriteString("]")
+	return out.String()
+}
+
+// HashKey é a chave usada para indexar um hash
+type HashKey struct {
+	Type  ObjectType
+	Value uint64
+}
+
+// HashPair é um par chave-valor em um hash
+type HashPair struct {
+	Key   Object
+	Value Object
+}
+
+// Hash representa um hash
+type Hash struct {
+	Pairs map[HashKey]HashPair
+}
+
+func (h *Hash) Type() ObjectType { return HASH_OBJ }
+func (h *Hash) Inspect() string {
+	var out bytes.Buffer
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, fmt.Sprintf("%s: %s",
+			pair.Key.Inspect(), pair.Value.Inspect()))
+	}
+	out.WriteString("{")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString("}")
+	return out.String()
+}
+
+// Hashable é uma interface para objetos que podem ser usados como chaves de hash
+type Hashable interface {
+	HashKey() HashKey
+}
+
+// HashKey implementa a interface Hashable para Boolean
+func (b *Boolean) HashKey() HashKey {
+	var value uint64
+	if b.Value {
+		value = 1
+	} else {
+		value = 0
+	}
+	return HashKey{Type: b.Type(), Value: value}
+}
+
+// HashKey implementa a interface Hashable para Integer
+func (i *Integer) HashKey() HashKey {
+	return HashKey{Type: i.Type(), Value: uint64(i.Value)}
+}
+
+// HashKey implementa a interface Hashable para String
+func (s *String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+	return HashKey{Type: s.Type(), Value: h.Sum64()}
+}
+
+var builtins = map[string]*Builtin{
+	"len": {
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+
+			switch arg := args[0].(type) {
+			case *Array:
+				return &Number{Value: float64(len(arg.Elements))}
+			case *String:
+				return &Number{Value: float64(len(arg.Value))}
+			default:
+				return newError("argument to `len` not supported, got %s", args[0].Type())
+			}
+		},
+	},
+	"first": {
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if args[0].Type() != ARRAY_OBJ {
+				return newError("argument to `first` must be ARRAY, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*Array)
+			if len(arr.Elements) > 0 {
+				return arr.Elements[0]
+			}
+			return NULL
+		},
+	},
+	"last": {
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if args[0].Type() != ARRAY_OBJ {
+				return newError("argument to `last` must be ARRAY, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*Array)
+			length := len(arr.Elements)
+			if length > 0 {
+				return arr.Elements[length-1]
+			}
+			return NULL
+		},
+	},
+	"rest": {
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("wrong number of arguments. got=%d, want=1", len(args))
+			}
+			if args[0].Type() != ARRAY_OBJ {
+				return newError("argument to `rest` must be ARRAY, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*Array)
+			length := len(arr.Elements)
+			if length > 0 {
+				newElements := make([]Object, length-1)
+				copy(newElements, arr.Elements[1:length])
+				return &Array{Elements: newElements}
+			}
+			return NULL
+		},
+	},
+	"push": {
+		Fn: func(args ...Object) Object {
+			if len(args) != 2 {
+				return newError("wrong number of arguments. got=%d, want=2", len(args))
+			}
+			if args[0].Type() != ARRAY_OBJ {
+				return newError("first argument to `push` must be ARRAY, got %s", args[0].Type())
+			}
+
+			arr := args[0].(*Array)
+			length := len(arr.Elements)
+
+			newElements := make([]Object, length+1)
+			copy(newElements, arr.Elements)
+			newElements[length] = args[1]
+
+			return &Array{Elements: newElements}
+		},
+	},
+}
+
+// newError cria um novo objeto de erro
+func newError(format string, a ...interface{}) *Error {
+	return &Error{Message: fmt.Sprintf(format, a...)}
+}

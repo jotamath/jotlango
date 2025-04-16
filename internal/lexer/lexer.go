@@ -42,6 +42,8 @@ const (
 	TokenLBrace    = "{"
 	TokenRBrace    = "}"
 	TokenDot       = "."
+	TokenLBracket  = "["
+	TokenRBracket  = "]"
 
 	// Palavras-chave
 	TokenFunction   = "fn"
@@ -168,6 +170,10 @@ func (l *Lexer) NextToken() Token {
 		tok = newToken(TokenRBrace, l.ch)
 	case '.':
 		tok = newToken(TokenDot, l.ch)
+	case '[':
+		tok = newToken(TokenLBracket, l.ch)
+	case ']':
+		tok = newToken(TokenRBracket, l.ch)
 	case '"':
 		tok.Type = TokenString
 		tok.Literal = l.readString()
